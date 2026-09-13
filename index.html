@@ -732,6 +732,29 @@
                 return last.getTime() - 6 * 86400000 <= SISTEM_BITIS.getTime();
             }, [weekDays]);
 
+            const gotoPrevWeek = () => { if (!canGoPrevWeek) return; const d = new Date(currentDate); d.setDate(d.getDate() - 7); setCurrentDate(d); };
+            const gotoNextWeek = () => { if (!canGoNextWeek) return; const d = new Date(currentDate); d.setDate(d.getDate() + 7); setCurrentDate(d); };
+
+            // Mobilde ana tabloyu parmakla sağa/sola kaydırarak hafta değiştirme.
+            // Yatay kaydırma dikey kaydırmayla (sayfa scroll'u) karışmasın diye
+            // yalnızca yatay hareket dikey hareketten belirgin şekilde fazlaysa
+            // ve belirli bir eşiği geçiyorsa hafta değiştirir.
+            const touchStartRef = useRef(null);
+            const handleWeekTouchStart = (e) => {
+                const t = e.touches[0];
+                touchStartRef.current = { x: t.clientX, y: t.clientY };
+            };
+            const handleWeekTouchEnd = (e) => {
+                const start = touchStartRef.current;
+                touchStartRef.current = null;
+                if (!start) return;
+                const t = e.changedTouches[0];
+                const dx = t.clientX - start.x;
+                const dy = t.clientY - start.y;
+                if (Math.abs(dx) < 55 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+                if (dx < 0) gotoNextWeek(); else gotoPrevWeek();
+            };
+
             const findBooking = useCallback((day, lesson) => {
                 if (!day || !lesson || !lesson.block || !lesson.label) return null;
                 return bookings.find(b =>
@@ -1775,13 +1798,13 @@
 
                                     {/* Sağ köşe: hafta gezinmesi (ay seçici yalnızca tablet/masaüstünde) */}
                                     <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-                                        <button disabled={!canGoPrevWeek} onClick={() => { const d = new Date(currentDate); d.setDate(d.getDate() - 7); setCurrentDate(d); }} className="compact-arrow-btn sm:w-9 sm:h-9 rounded-full flex items-center justify-center disabled:opacity-25 shrink-0" style={{ background: 'rgba(255,255,255,0.15)' }}>
+                                        <button disabled={!canGoPrevWeek} onClick={gotoPrevWeek} className="compact-arrow-btn sm:w-9 sm:h-9 rounded-full flex items-center justify-center disabled:opacity-25 shrink-0" style={{ background: 'rgba(255,255,255,0.15)' }}>
                                             <Icon name="chevron-left" className="w-4 h-4 text-white" />
                                         </button>
                                         <select value={`${currentDate.getFullYear()}-${currentDate.getMonth()}`} onChange={(e) => { const [y, m] = e.target.value.split('-').map(Number); let target = new Date(y, m, 1); if (target < SISTEM_BASLANGIC) target = new Date(SISTEM_BASLANGIC); setCurrentDate(target); }} className="hidden sm:block select-chevron-light appearance-none text-center px-2 py-1.5 text-base font-mono font-semibold outline-none bg-transparent cursor-pointer text-white rounded-lg shrink-0" style={{ background: 'rgba(255,255,255,0.15)' }}>
                                             {MONTH_OPTIONS.map(o => <option key={`${o.year}-${o.month}`} value={`${o.year}-${o.month}`} style={{ color: 'var(--ink)' }}>{o.label}</option>)}
                                         </select>
-                                        <button disabled={!canGoNextWeek} onClick={() => { const d = new Date(currentDate); d.setDate(d.getDate() + 7); setCurrentDate(d); }} className="compact-arrow-btn sm:w-9 sm:h-9 rounded-full flex items-center justify-center disabled:opacity-25 shrink-0" style={{ background: 'rgba(255,255,255,0.15)' }}>
+                                        <button disabled={!canGoNextWeek} onClick={gotoNextWeek} className="compact-arrow-btn sm:w-9 sm:h-9 rounded-full flex items-center justify-center disabled:opacity-25 shrink-0" style={{ background: 'rgba(255,255,255,0.15)' }}>
                                             <Icon name="chevron-right" className="w-4 h-4 text-white" />
                                         </button>
                                     </div>
@@ -1846,7 +1869,7 @@
                             </div>
 
                             {/* Mobil görünüm: tüm haftayı tek ekranda gösteren renkli ızgara */}
-                            <div className={(isSnapshotMode ? "hidden" : "flex flex-col md:hidden") + " mobile-schedule-view"}>
+                            <div className={(isSnapshotMode ? "hidden" : "flex flex-col md:hidden") + " mobile-schedule-view"} onTouchStart={handleWeekTouchStart} onTouchEnd={handleWeekTouchEnd}>
                                 <div className="mobile-week-grid grid gap-1 p-2" style={{ gridTemplateColumns: '38px repeat(5, 1fr)', gridTemplateRows: 'auto repeat(6, 1fr)' }}>
                                     <div></div>
                                     {weekDays.map((day, idx) => {
