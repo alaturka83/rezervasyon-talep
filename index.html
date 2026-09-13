@@ -353,7 +353,22 @@
             const [role, setRole] = useState(() => {
                 try { return localStorage.getItem('rz_role') === 'admin' ? 'admin' : 'teacher'; } catch (e) { return 'teacher'; }
             }); // 'teacher' = Öğretmen/İzleyici (varsayılan) | 'admin' = Yönetici
-            const [settings, setSettings] = useState({ locations: DEFAULT_LOCATIONS, adminPassword: DEFAULT_ADMIN_PASSWORD, schoolName: SISTEM_ADI, schoolSubtitle: '', logoDataUrl: '', holidays: DEFAULT_HOLIDAYS, lessonTimes: { morning: DEFAULT_MORNING_LESSONS, afternoon: DEFAULT_AFTERNOON_LESSONS } });
+            // Yerel önbellek (localStorage): buluttan ilk yanıt gelene kadar
+            // uygulamanın "boş"/varsayılan görünmesi yerine, bu cihazda daha
+            // önce görülen son bilinen veriyi anında gösterir. Böylece uygulama
+            // her açılışta değil, yalnızca ilk kurulumda "buluta bağlanıyor"
+            // beklemesi yaşatır — arka planda gerçek veriyle sessizce güncellenir.
+            const okuOnbellek = (anahtar, varsayilan) => {
+                try {
+                    const ham = localStorage.getItem(anahtar);
+                    return ham ? JSON.parse(ham) : varsayilan;
+                } catch (e) { return varsayilan; }
+            };
+            const yazOnbellek = (anahtar, deger) => {
+                try { localStorage.setItem(anahtar, JSON.stringify(deger)); } catch (e) {}
+            };
+
+            const [settings, setSettings] = useState(() => okuOnbellek('rz_onbellek_ayarlar', { locations: DEFAULT_LOCATIONS, adminPassword: DEFAULT_ADMIN_PASSWORD, schoolName: SISTEM_ADI, schoolSubtitle: '', logoDataUrl: '', holidays: DEFAULT_HOLIDAYS, lessonTimes: { morning: DEFAULT_MORNING_LESSONS, afternoon: DEFAULT_AFTERNOON_LESSONS } }));
             const [newHolidayForm, setNewHolidayForm] = useState({ date: '', name: '', block: 'TAM', days: 1 });
             const [activeBlock, setActiveBlock] = useState('SABAH'); // 'SABAH' | 'ÖĞLE'
 
@@ -367,10 +382,10 @@
             const [authError, setAuthError] = useState('');
 
             const [activeLocation, setActiveLocation] = useState(DEFAULT_LOCATIONS[0]);
-            const [bookings, setBookings] = useState([]); // { id, location, date, lessonLabel, block, teacher, activity, timestamp }
+            const [bookings, setBookings] = useState(() => okuOnbellek('rz_onbellek_rezervasyonlar', [])); // { id, location, date, lessonLabel, block, teacher, activity, timestamp }
             const [cloudStatus, setCloudStatus] = useState('baglaniyor'); // baglaniyor | senkron | hata
             const fbDbRef = React.useRef(null);
-            const [talepler, setTalepler] = useState({}); // { pushId: { id, location, date, lessonLabel, block, teacher, activity, not, durum, olusturmaZamani } }
+            const [talepler, setTalepler] = useState(() => okuOnbellek('rz_onbellek_talepler', {})); // { pushId: { id, location, date, lessonLabel, block, teacher, activity, not, durum, olusturmaZamani } }
             const [showTaleplerModal, setShowTaleplerModal] = useState(false);
             const [taleplerIslemHata, setTaleplerIslemHata] = useState('');
             const [showTaleplerimModal, setShowTaleplerimModal] = useState(false);
@@ -432,7 +447,7 @@
                     ayarlarCb = ayarlarRef.on('value', snap => {
                         const val = snap.val();
                         if (val) {
-                            setSettings(prev => ({ ...prev, ...val }));
+                            setSettings(prev => { const next = { ...prev, ...val }; yazOnbellek('rz_onbellek_ayarlar', next); return next; });
                         } else {
                             // Bulutta henüz veri yok: ilk kurulum, mevcut varsayılanları buluta yaz.
                             ayarlarRef.set(settings);
@@ -442,12 +457,16 @@
 
                     bookingsCb = bookingsRef.on('value', snap => {
                         const val = snap.val();
-                        setBookings(Array.isArray(val) ? val : (val ? Object.values(val) : []));
+                        const dizi = Array.isArray(val) ? val : (val ? Object.values(val) : []);
+                        setBookings(dizi);
+                        yazOnbellek('rz_onbellek_rezervasyonlar', dizi);
                         setCloudStatus('senkron');
                     }, err => { console.error('Rezervasyon bulut hatası:', err); setCloudStatus('hata'); });
 
                     taleplerCb = taleplerRef.on('value', snap => {
-                        setTalepler(snap.val() || {});
+                        const val = snap.val() || {};
+                        setTalepler(val);
+                        yazOnbellek('rz_onbellek_talepler', val);
                     }, err => { console.error('Talepler bulut hatası:', err); });
                 };
 
