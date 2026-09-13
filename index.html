@@ -1,425 +1,1312 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Rezervasyon Talebi</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&family=Work+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<style>
-:root{
-  --ink:#20261F; --ink-soft:#5E675B; --paper:#F2F1E7; --paper-2:#E9E5D3; --panel:#FCFBF6;
-  --line:#C7C0A4; --line-strong:#8F8563; --teal:#4FB6AC; --teal-dark:#2D7D74; --teal-tint:#DFF4F1;
-  --ochre:#AE7E2B; --ochre-tint:#F1E3C3; --brick:#9E3D31; --brick-tint:#F3DEDA; --green:#3F8F5F; --green-tint:#DCEEDD;
-}
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-html,body{background:var(--paper);}
-body{margin:0;font-family:'Work Sans',sans-serif;color:var(--ink);font-size:14px;overscroll-behavior-y:none;}
-.disp{font-family:'Fraunces',serif;}
-.wrap{max-width:720px;margin:0 auto;padding:14px 14px 100px;}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Rezervasyon Talebi</title>
+    <meta name="theme-color" content="#2D7D74">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <!-- Babel for JSX -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <!-- html2canvas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- Firebase (Bulut senkronizasyonu — Realtime Database + Authentication) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
-.header{background:var(--ink);color:#fff;border-radius:16px;padding:16px 16px;display:flex;align-items:center;gap:12px;margin-bottom:14px;}
-.header .logo{width:42px;height:42px;border-radius:12px;object-fit:cover;flex-shrink:0;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;}
-.header .h-title{font-family:'Fraunces',serif;font-size:17px;font-weight:700;line-height:1.2;}
-.header .h-sub{font-size:11.5px;opacity:.75;margin-top:2px;}
-.header .cloud-dot{width:7px;height:7px;border-radius:50%;background:var(--teal);display:inline-block;margin-right:5px;}
-.header .cloud-dot.hata{background:var(--brick);}
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700;9..144,800&family=Work+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap');
 
-.mekan-tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;margin-bottom:12px;scrollbar-width:none;}
-.mekan-tabs::-webkit-scrollbar{display:none;}
-.mekan-tabs button{flex:none;border:1.5px solid var(--line);background:var(--panel);color:var(--ink);font-weight:700;font-size:13px;padding:9px 16px;border-radius:11px;cursor:pointer;white-space:nowrap;}
-.mekan-tabs button.active{background:var(--teal-dark);color:#fff;border-color:var(--teal-dark);}
+        :root{
+            --ink:#20261F;
+            --ink-soft:#5E675B;
+            --paper:#F2F1E7;
+            --paper-2:#E9E5D3;
+            --panel:#FCFBF6;
+            --line:#C7C0A4;
+            --line-strong:#8F8563;
+            --teal:#4FB6AC;
+            --teal-dark:#2D7D74;
+            --teal-tint:#DFF4F1;
+            --ochre:#AE7E2B;
+            --ochre-tint:#F1E3C3;
+            --brick:#9E3D31;
+            --brick-tint:#F3DEDA;
+            --green:#3F8F5F;
+            --green-tint:#DCEEDD;
+        }
+        *{ -webkit-tap-highlight-color: transparent; }
+        html,body{ background:var(--paper); }
+        body{ font-family:'Work Sans', sans-serif; color:var(--ink); overscroll-behavior-y:none; }
+        .font-display{ font-family:'Fraunces', serif; }
+        .font-mono{ font-family:'IBM Plex Mono', monospace; }
 
-.week-nav{display:flex;align-items:center;justify-content:space-between;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin-bottom:14px;}
-.week-nav button{border:none;background:var(--paper-2);width:34px;height:34px;border-radius:9px;font-size:16px;font-weight:800;color:var(--teal-dark);cursor:pointer;}
-.week-nav button:disabled{opacity:.35;cursor:default;}
-.week-nav .lbl{font-weight:700;font-size:13px;color:var(--ink);}
+        .scrollbar-hide::-webkit-scrollbar{ display:none; }
+        .scrollbar-hide{ -ms-overflow-style:none; scrollbar-width:none; }
 
-.day-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;margin-bottom:10px;overflow:hidden;}
-.day-head{padding:10px 14px;background:var(--paper-2);display:flex;align-items:baseline;justify-content:space-between;}
-.day-head .d-name{font-weight:800;font-size:13px;color:var(--ink);}
-.day-head .d-date{font-size:11.5px;color:var(--ink-soft);font-weight:600;}
-.day-holiday{padding:10px 14px;font-size:12.5px;color:var(--brick);font-weight:700;background:var(--brick-tint);}
+        .safe-b{ padding-bottom: max(0.75rem, env(safe-area-inset-bottom)); }
+        .safe-t{ padding-top: env(safe-area-inset-top); }
 
-.block-label{font-size:10px;font-weight:800;letter-spacing:.5px;color:var(--ink-soft);padding:9px 14px 4px;}
-.slot-row{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-top:1px solid var(--line);gap:10px;}
-.slot-row .s-lbl{font-size:12.5px;font-weight:700;color:var(--ink);flex-shrink:0;width:88px;}
-.slot-row .s-time{font-size:10.5px;color:var(--ink-soft);font-weight:500;}
-.slot-pill{flex:1;text-align:right;}
-.pill{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:9px;font-size:11.5px;font-weight:800;border:none;cursor:pointer;}
-.pill.musait{background:var(--teal-tint);color:var(--teal-dark);}
-.pill.musait:active{transform:scale(0.96);}
-.pill.dolu{background:var(--paper-2);color:var(--ink-soft);cursor:default;}
-.pill.beklemede{background:var(--ochre-tint);color:var(--ochre);cursor:default;}
-.pill.beklemede.benim{background:var(--ochre);color:#fff;}
+        table, th, td{ border-color: var(--line) !important; }
+        .cell-tap:active{ background-color: var(--paper-2) !important; }
 
-.fab{position:fixed;right:16px;bottom:16px;z-index:400;height:52px;border-radius:26px;background:var(--teal-dark);color:#fff;border:none;cursor:pointer;box-shadow:0 6px 18px rgba(20,25,40,.25);display:flex;align-items:center;gap:8px;padding:0 18px;font-weight:800;font-size:13px;}
-.fab .badge{background:var(--brick);color:#fff;border-radius:20px;min-width:18px;height:18px;padding:0 4px;font-size:10.5px;display:flex;align-items:center;justify-content:center;}
+        /* Tüm düğmelere basma hissiyatı */
+        button:not(:disabled){ transition: transform .1s ease, box-shadow .1s ease, opacity .1s ease; }
+        button:not(:disabled):active{ transform: scale(0.95); }
+        label{ transition: transform .1s ease; }
+        label:active{ transform: scale(0.97); }
 
-.overlay{position:fixed;inset:0;background:rgba(32,38,31,0.55);backdrop-filter:blur(4px);z-index:800;display:flex;align-items:flex-end;justify-content:center;}
-@media (min-width:640px){ .overlay{align-items:center;} }
-.sheet{background:var(--panel);width:100%;max-width:480px;border-radius:22px 22px 0 0;padding:22px 20px calc(20px + env(safe-area-inset-bottom));max-height:88vh;overflow-y:auto;}
-@media (min-width:640px){ .sheet{border-radius:22px;} }
-.sheet h3{font-family:'Fraunces',serif;font-size:18px;font-weight:700;margin:0 0 4px;}
-.sheet .sub{font-size:12.5px;color:var(--ink-soft);font-weight:600;margin-bottom:16px;}
-.field{margin-bottom:12px;}
-.field label{display:block;font-size:10.5px;font-weight:800;color:var(--ink-soft);letter-spacing:.3px;margin-bottom:5px;}
-.field input,.field textarea{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:11px 12px;font-size:15px;font-family:inherit;color:var(--ink);background:#fff;outline:none;}
-.field textarea{resize:vertical;min-height:60px;}
-.btn-row{display:flex;gap:8px;margin-top:16px;}
-.btn{flex:1;padding:13px;border-radius:12px;font-weight:800;font-size:13.5px;border:none;cursor:pointer;}
-.btn.primary{background:var(--teal-dark);color:#fff;}
-.btn.ghost{background:var(--paper-2);color:var(--ink);}
-.err-box{background:var(--brick-tint);color:var(--brick);font-size:12px;font-weight:700;padding:10px 12px;border-radius:10px;margin-bottom:12px;}
-.ok-box{background:var(--green-tint);color:var(--green);font-size:13px;font-weight:700;padding:14px;border-radius:12px;text-align:center;}
+        /* Görüntü yakalama modu */
+        .snapshot-active .no-snapshot{ display:none !important; }
+        .snapshot-active .table-wrapper{
+            border:3px solid var(--teal-dark) !important;
+            border-radius:0 !important;
+            background:var(--panel) !important;
+            width:1500px !important;
+            margin:0 auto !important;
+            box-shadow:none !important;
+            overflow:visible !important;
+        }
+        .snapshot-active main{
+            max-width:none !important;
+            width:100% !important;
+            padding-left:0 !important;
+            padding-right:0 !important;
+            margin-top:190px !important;
+            display:flex !important;
+            justify-content:center !important;
+        }
+        /* Yakalanan görüntüde satırlar, ekrandaki daraltılmış haliyle değil,
+           etkinlik metinlerinin (öğretmen + etkinlik adı) taşmadan sığacağı
+           kadar ferah yükseklikte olmalı. */
+        .snapshot-active tbody td{ height:5rem !important; }
+        .snapshot-active thead th{ height:6rem !important; }
+        /* html2canvas, sticky konumlandırılmış tablo hücreleriyle satır
+           yüksekliğini bazen yanlış hesaplıyor; yakalama sırasında sticky
+           kaydırma zaten gerekmediği için devre dışı bırakıyoruz. */
+        .snapshot-active .sticky{ position: static !important; }
 
-.talep-item{border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:8px;}
-.talep-item .t-loc{font-weight:800;font-size:13px;}
-.talep-item .t-date{font-size:11.5px;color:var(--ink-soft);font-weight:600;margin-bottom:6px;}
-.durum-pill{display:inline-block;padding:3px 9px;border-radius:8px;font-size:10.5px;font-weight:800;}
-.durum-pill.bekliyor{background:var(--ochre-tint);color:var(--ochre);}
-.durum-pill.onaylandi{background:var(--green-tint);color:var(--green);}
-.durum-pill.reddedildi{background:var(--brick-tint);color:var(--brick);}
+        /* ================================================================
+           MOBİL STABİLİZASYON — yalnızca 767px ve altı (Tailwind'in "md"
+           kırılımının altı) için geçerlidir. Masaüstü görünümüne (≥768px)
+           hiçbir şekilde dokunmaz.
+        ================================================================= */
+        @media (max-width: 767px){
+            /* iOS Safari, 16px'in altındaki alanlara dokununca sayfayı
+               otomatik yakınlaştırır; bu da klavye her açıldığında
+               arayüzün "zıplamasına" neden olur. Tüm form alanlarını
+               16px'te sabitleyerek bunu tamamen engeller. */
+            input, select, textarea{ font-size:16px !important; }
 
-.msg{text-align:center;padding:40px 16px;color:var(--ink-soft);font-size:13px;font-weight:600;}
-.footnote{text-align:center;font-size:11px;color:var(--ink-soft);font-weight:500;margin-top:18px;padding:0 20px;line-height:1.5;}
-</style>
+            /* Dokunma gecikmesini (~300ms) ve istenmeyen çift-dokunma
+               yakınlaştırmasını kaldırır. */
+            button, a, select, label{ touch-action: manipulation; }
+
+            /* Kaydırılabilir tüm panellerde (modallar, sekme şeritleri,
+               gün şeridi) akıcı/momentum kaydırma. */
+            .overflow-y-auto, .overflow-x-auto{ -webkit-overflow-scrolling: touch; }
+
+            /* Her düğme ve açılır menü için rahat, parmakla kullanılabilir
+               minimum dokunma alanı. */
+            button, select{ min-height:44px; }
+            button.w-8.h-8, button.w-9.h-9{ width:44px !important; height:44px !important; }
+
+            /* Boyut sınıfı olmayan, salt ikonlu küçük düğmelere (ör. bilgi
+               şeridindeki kapatma düğmesi) görünümü değiştirmeden gerçek
+               bir dokunma alanı kazandırır. */
+            button.tap-pad{ padding:10px; margin:-10px; }
+
+            /* Tam ekran / alt sayfa (bottom-sheet) modallar, mobil
+               tarayıcının adres çubuğu yüzünden kesilmesin diye görünür
+               (dinamik) viewport yüksekliğine göre boyutlanır. Desteklenmeyen
+               tarayıcılarda bu satır yok sayılır ve mevcut vh değeri geçerli
+               kalmaya devam eder. */
+            .h-\[94vh\]{ height:94dvh !important; }
+            .max-h-\[92vh\]{ max-height:92dvh !important; }
+
+            /* Ay/yıl seçicisi ve "Toplu oluştur" mekan seçicisi, düz metin
+               gibi değil açıkça dokunulabilir bir açılır menü gibi görünsün
+               diye bir ok ikonu kazanır. */
+            select.select-chevron-light, select.select-chevron-dark{
+                -webkit-appearance:none; appearance:none;
+                background-repeat:no-repeat !important;
+                background-position: right 10px center !important;
+                background-size:14px !important;
+                padding-right:30px !important;
+            }
+            select.select-chevron-light{
+                background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>") !important;
+            }
+            select.select-chevron-dark{
+                background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235E675B' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>") !important;
+            }
+
+            /* Yeşil alandaki Sabah/Öğle ve hafta ok düğmeleri: genel dokunma
+               alanı kuralından (min-height:44px) bilinçli olarak muaf —
+               burada dikey yer kazanmak öncelikli. */
+            .compact-pill-btn{ min-height:0; height:24px; }
+            .compact-arrow-btn{ width:26px; height:26px; min-height:0; }
+
+            /* ---- Ana sayfa: tek ekrana sığan, kaydırmasız mobil düzen ----
+               Normal görüntüleme sırasında (paylaşım/yakalama modu hariç)
+               üst çubuk + gün şeridi sabit, ders listesi ise kalan tüm
+               yüksekliği eşit 6 parçaya bölerek doldurur; böylece bir
+               günün tüm saatleri aynı anda, kaydırmadan görünür. */
+            #app-shell{ display:flex; flex-direction:column; }
+            #app-shell:not(.snapshot-active){ height:100dvh; min-height:0; overflow:hidden; padding-bottom: calc(3.25rem + max(0.75rem, env(safe-area-inset-bottom))) !important; }
+            #app-shell:not(.snapshot-active) > header{ flex-shrink:0; }
+            #app-shell:not(.snapshot-active) > main{ flex:1 1 auto; min-height:0; width:100%; display:flex; flex-direction:column; overflow:hidden; padding-top:0.5rem; padding-bottom:0.5rem; }
+            #app-shell:not(.snapshot-active) > main > #printable-table-area{ flex:1 1 auto; min-height:0; display:flex; flex-direction:column; }
+            #app-shell:not(.snapshot-active) > main > #printable-table-area > .mobile-schedule-view{ flex:1 1 auto; min-height:0; display:flex; flex-direction:column; }
+            #app-shell:not(.snapshot-active) > main > #printable-table-area > .mobile-schedule-view > .mobile-week-grid{ flex:1 1 auto; min-height:0; }
+        }
+    </style>
 </head>
 <body>
-<div id="app" class="wrap"><div class="msg">Yükleniyor…</div></div>
+    <div id="root"></div>
 
-<script>
-// ---- BULUT BAĞLANTISI (Firebase Realtime Database + Authentication) ----
-// Rezervasyon sisteminin bağımsız Firebase projesi — idare uygulamasıyla aynı proje.
-const FIREBASE_CONFIG = {
-    apiKey: "AIzaSyBOxPxve4zU-5zE14pWiaNFWlF-Rc6I6cA",
-    authDomain: "rezervasyon1453.firebaseapp.com",
-    databaseURL: "https://rezervasyon1453-default-rtdb.europe-west1.firebasedatabase.app",
-    projectId: "rezervasyon1453",
-    storageBucket: "rezervasyon1453.firebasestorage.app",
-    messagingSenderId: "383193041629",
-    appId: "1:383193041629:web:8eebc09ef5a62197b1e934",
-    measurementId: "G-0V13E541LN"
-};
-const RZ_AYARLAR_PATH = 'rezervasyon/ayarlar';
-const RZ_BOOKINGS_PATH = 'rezervasyon/onayliRezervasyonlar';
-const RZ_TALEPLER_PATH = 'rezervasyon/talepler';
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useCallback } = React;
 
-firebase.initializeApp(FIREBASE_CONFIG);
-const fbDb = firebase.database();
-const fbAuth = firebase.auth();
-
-// ---- SABİTLER (idare uygulamasıyla birebir aynı — kimlik/tarih formatları eşleşsin) ----
-const SISTEM_ADI = "İdare Rezervasyon Sistemi";
-const SISTEM_BASLANGIC = new Date(2026, 8, 14); SISTEM_BASLANGIC.setHours(0, 0, 0, 0);
-const SISTEM_BITIS = new Date(2027, 5, 25); SISTEM_BITIS.setHours(0, 0, 0, 0);
-const GUN_ADLARI = ['PAZARTESİ', 'SALI', 'ÇARŞAMBA', 'PERŞEMBE', 'CUMA'];
-const DAY_LABELS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma'];
-const DEFAULT_LOCATIONS = ["Konferans Salonu", "Kütüphane"];
-const DEFAULT_MORNING_LESSONS = [
-    { label: "1. Ders", start: "08:10", end: "08:45", block: "SABAH" },
-    { label: "2. Ders", start: "08:55", end: "09:30", block: "SABAH" },
-    { label: "3. Ders", start: "09:40", end: "10:15", block: "SABAH" },
-    { label: "4. Ders", start: "10:25", end: "11:00", block: "SABAH" },
-    { label: "5. Ders", start: "11:10", end: "11:45", block: "SABAH" },
-    { label: "6. Ders", start: "11:55", end: "12:30", block: "SABAH" },
-];
-const DEFAULT_AFTERNOON_LESSONS = [
-    { label: "1. Ders", start: "13:00", end: "13:35", block: "ÖĞLE" },
-    { label: "2. Ders", start: "13:45", end: "14:20", block: "ÖĞLE" },
-    { label: "3. Ders", start: "14:30", end: "15:05", block: "ÖĞLE" },
-    { label: "4. Ders", start: "15:15", end: "15:50", block: "ÖĞLE" },
-    { label: "5. Ders", start: "16:00", end: "16:35", block: "ÖĞLE" },
-    { label: "6. Ders", start: "16:45", end: "17:20", block: "ÖĞLE" },
-];
-
-function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
-function slugify(str) { return (str || "").toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() || "yer"; }
-function toDateStrLocal(d) { const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0'); return `${y}-${m}-${day}`; }
-function normalizeDate(d) { const n = new Date(d); n.setHours(0, 0, 0, 0); return n; }
-function isInSystemRange(d) { const n = normalizeDate(d); return n.getTime() >= SISTEM_BASLANGIC.getTime() && n.getTime() <= SISTEM_BITIS.getTime(); }
-function bookingDocId(location, dateStr, block, label) { return `${slugify(location)}-${dateStr}-${block}-${label}`.replace(/\s+/g, '-'); }
-function formatDateStrDisplay(s) { if (!s) return ''; const [y, m, d] = s.split('-'); return `${d}.${m}.${y}`; }
-function getDayHolidays(list, dateStr) { return (list || []).filter(h => h.date === dateStr); }
-function pickHolidayForBlock(dayHolidays, block) {
-    if (!dayHolidays || !dayHolidays.length) return null;
-    return dayHolidays.find(h => h.block === 'TAM') || dayHolidays.find(h => h.block === block) || null;
-}
-
-// ---- DURUM ----
-const state = {
-    ayarlar: { locations: DEFAULT_LOCATIONS, schoolName: SISTEM_ADI, schoolSubtitle: '', logoDataUrl: '', holidays: [], lessonTimes: { morning: DEFAULT_MORNING_LESSONS, afternoon: DEFAULT_AFTERNOON_LESSONS } },
-    bookings: [],
-    talepler: {},
-    aktifMekan: null,
-    haftaBaslangic: null, // Pazartesi
-    cloudStatus: 'baglaniyor',
-    modalSlot: null, // { location, date, dateDisplay, dayName, block, label, time }
-    gonderiliyor: false,
-    gonderHata: '',
-    taleplerimAcik: false,
-};
-
-function benimTaleplerim() { try { return JSON.parse(localStorage.getItem('rz_talep_kayitlarim') || '[]'); } catch (e) { return []; } }
-function benimTaleplerimeEkle(kayit) { const l = benimTaleplerim(); l.unshift(kayit); localStorage.setItem('rz_talep_kayitlarim', JSON.stringify(l.slice(0, 60))); }
-function kayitliIsim() { return localStorage.getItem('rz_talep_isim') || ''; }
-
-function mondayOf(d) { const c = new Date(d); const day = c.getDay(); const diff = c.getDate() - day + (day === 0 ? -6 : 1); c.setDate(diff); c.setHours(0, 0, 0, 0); return c; }
-
-function baslat() {
-    const bugun = new Date();
-    const baslangicHafta = mondayOf(bugun.getTime() < SISTEM_BASLANGIC.getTime() ? SISTEM_BASLANGIC : (bugun.getTime() > SISTEM_BITIS.getTime() ? SISTEM_BASLANGIC : bugun));
-    state.haftaBaslangic = baslangicHafta;
-    render();
-
-    fbAuth.onAuthStateChanged(user => {
-        if (user) {
-            dinlemeyeBasla();
-        } else {
-            fbAuth.signInAnonymously().catch(err => { console.error('Giriş hatası:', err); state.cloudStatus = 'hata'; render(); });
-        }
-    });
-}
-
-function dinlemeyeBasla() {
-    fbDb.ref(RZ_AYARLAR_PATH).on('value', snap => {
-        const val = snap.val();
-        if (val) state.ayarlar = { ...state.ayarlar, ...val };
-        if (!state.aktifMekan) state.aktifMekan = (state.ayarlar.locations || DEFAULT_LOCATIONS)[0];
-        state.cloudStatus = 'senkron';
-        render();
-    }, err => { console.error(err); state.cloudStatus = 'hata'; render(); });
-
-    fbDb.ref(RZ_BOOKINGS_PATH).on('value', snap => {
-        const val = snap.val();
-        state.bookings = Array.isArray(val) ? val : (val ? Object.values(val) : []);
-        render();
-    }, err => console.error(err));
-
-    fbDb.ref(RZ_TALEPLER_PATH).on('value', snap => {
-        state.talepler = snap.val() || {};
-        render();
-    }, err => console.error(err));
-}
-
-function haftaGeriGit() {
-    const yeni = new Date(state.haftaBaslangic); yeni.setDate(yeni.getDate() - 7);
-    if (yeni.getTime() + 4 * 86400000 < SISTEM_BASLANGIC.getTime()) return;
-    state.haftaBaslangic = yeni; render();
-}
-function haftaIleriGit() {
-    const yeni = new Date(state.haftaBaslangic); yeni.setDate(yeni.getDate() + 7);
-    if (yeni.getTime() > SISTEM_BITIS.getTime()) return;
-    state.haftaBaslangic = yeni; render();
-}
-
-function slotDurumu(location, dateStr, block, label) {
-    const id = bookingDocId(location, dateStr, block, label);
-    const dolu = state.bookings.find(b => b.id === id);
-    if (dolu) return { tip: 'dolu', bilgi: dolu };
-    const taleplerArr = Object.entries(state.talepler).map(([key, t]) => ({ ...t, key }));
-    const bekleyen = taleplerArr.find(t => t.durum === 'bekliyor' && bookingDocId(t.location, t.date, t.block, t.lessonLabel) === id);
-    if (bekleyen) {
-        const benim = benimTaleplerim().some(k => k.key === bekleyen.key);
-        return { tip: 'beklemede', bilgi: bekleyen, benim };
-    }
-    return { tip: 'musait' };
-}
-
-function slotAc(location, date, dateDisplay, dayName, block, label, time) {
-    state.modalSlot = { location, date, dateDisplay, dayName, block, label, time };
-    state.gonderHata = '';
-    render();
-}
-function modalKapat() { state.modalSlot = null; state.gonderiliyor = false; state.gonderHata = ''; render(); }
-
-function talepGonder(isim, aktivite) {
-    isim = (isim || '').trim();
-    if (!isim) { state.gonderHata = 'Lütfen adınızı ve soyadınızı yazın.'; render(); return; }
-    const s = state.modalSlot;
-    if (!s) return;
-    const durum = slotDurumu(s.location, s.date, s.block, s.label);
-    if (durum.tip !== 'musait') { state.gonderHata = 'Bu saat için durum değişti, lütfen sayfayı kontrol edin.'; render(); return; }
-
-    state.gonderiliyor = true; render();
-    localStorage.setItem('rz_talep_isim', isim);
-    const kayit = { location: s.location, date: s.date, lessonLabel: s.label, block: s.block, teacher: isim, activity: (aktivite || '').trim(), durum: 'bekliyor', olusturmaZamani: Date.now() };
-    fbDb.ref(RZ_TALEPLER_PATH).push(kayit).then(ref => {
-        benimTaleplerimeEkle({ key: ref.key, location: s.location, date: s.date, lessonLabel: s.label });
-        state.gonderiliyor = false;
-        state.modalSlot = null;
-        state.gonderHata = '';
-        render();
-    }).catch(err => {
-        console.error(err);
-        state.gonderiliyor = false;
-        state.gonderHata = 'Gönderilemedi, internet bağlantınızı kontrol edip tekrar deneyin.';
-        render();
-    });
-}
-
-// ---- GÖRÜNÜM ----
-function render() {
-    const app = document.getElementById('app');
-    const a = state.ayarlar;
-    const locations = a.locations && a.locations.length ? a.locations : DEFAULT_LOCATIONS;
-    if (!state.aktifMekan) state.aktifMekan = locations[0];
-
-    const gunler = Array.from({ length: 5 }, (_, i) => {
-        const d = new Date(state.haftaBaslangic); d.setDate(d.getDate() + i);
-        const dateStr = toDateStrLocal(d);
-        return { name: GUN_ADLARI[i], display: DAY_LABELS[i], dateStr, dateDisplay: formatDateStrDisplay(dateStr), valid: isInSystemRange(d), holidays: getDayHolidays(a.holidays, dateStr) };
-    });
-
-    const ilkGun = gunler[0], sonGun = gunler[4];
-    const haftaLbl = `${ilkGun.dateDisplay} – ${sonGun.dateDisplay}`;
-    const oncekiKapali = new Date(state.haftaBaslangic).getTime() + 4 * 86400000 - 7 * 86400000 < SISTEM_BASLANGIC.getTime();
-    const sonrakiKapali = new Date(state.haftaBaslangic).getTime() + 7 * 86400000 > SISTEM_BITIS.getTime();
-
-    const morning = a.lessonTimes?.morning || DEFAULT_MORNING_LESSONS;
-    const afternoon = a.lessonTimes?.afternoon || DEFAULT_AFTERNOON_LESSONS;
-
-    const benimListe = benimTaleplerim();
-    const taleplerArr = Object.entries(state.talepler).map(([key, t]) => ({ ...t, key }));
-    const benimKayitlar = benimListe.map(k => {
-        const guncel = taleplerArr.find(t => t.key === k.key);
-        return guncel ? { ...guncel } : { ...k, durum: 'bilinmiyor' };
-    }).slice(0, 20);
-
-    let html = '';
-    html += `<div class="header">
-        <div class="logo">${a.logoDataUrl ? `<img src="${a.logoDataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:12px;">` : esc((a.schoolName || SISTEM_ADI).charAt(0))}</div>
-        <div style="flex:1;min-width:0;">
-            <div class="h-title">${esc(a.schoolName || SISTEM_ADI)}</div>
-            <div class="h-sub"><span class="cloud-dot ${state.cloudStatus === 'hata' ? 'hata' : ''}"></span>Ortak Alan Rezervasyon Talebi ${state.cloudStatus === 'hata' ? '· bağlantı hatası' : ''}</div>
-        </div>
-    </div>`;
-
-    html += `<div class="mekan-tabs">${locations.map(loc => `<button data-action="mekan" data-mekan="${esc(loc)}" class="${loc === state.aktifMekan ? 'active' : ''}">${esc(loc)}</button>`).join('')}</div>`;
-
-    html += `<div class="week-nav">
-        <button data-action="prev-week" ${oncekiKapali ? 'disabled' : ''}>‹</button>
-        <span class="lbl">${haftaLbl}</span>
-        <button data-action="next-week" ${sonrakiKapali ? 'disabled' : ''}>›</button>
-    </div>`;
-
-    gunler.forEach(g => {
-        html += `<div class="day-card">`;
-        html += `<div class="day-head"><span class="d-name">${g.name}</span><span class="d-date">${g.dateDisplay}</span></div>`;
-        if (!g.valid) {
-            html += `<div class="day-holiday">Sistem tarih aralığı dışında</div></div>`;
-            return;
-        }
-        [['SABAH', morning], ['ÖĞLE', afternoon]].forEach(([blok, dersler]) => {
-            const tatil = pickHolidayForBlock(g.holidays, blok);
-            html += `<div class="block-label">${blok === 'SABAH' ? 'SABAHÇI GRUBU' : 'ÖĞLENCİ GRUBU'}</div>`;
-            if (tatil) {
-                html += `<div class="day-holiday" style="margin:0 14px 8px;border-radius:8px;">${esc(tatil.name)} — bu blokta rezervasyon alınmıyor</div>`;
-                return;
+        // --- GÜVENLİ ICON BİLEŞENİ ---
+        const Icon = ({ name, className }) => {
+            const common = { className, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" };
+            switch (name) {
+                case 'lock': return <svg {...common}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>;
+                case 'camera': return <svg {...common}><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>;
+                case 'calendar': return <svg {...common}><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>;
+                case 'chevron-left': return <svg {...common}><polyline points="15 18 9 12 15 6"></polyline></svg>;
+                case 'chevron-right': return <svg {...common}><polyline points="9 18 15 12 9 6"></polyline></svg>;
+                case 'plus': return <svg {...common}><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
+                case 'x': return <svg {...common}><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>;
+                case 'eye': return <svg {...common}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>;
+                case 'settings': return <svg {...common}><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>;
+                case 'menu': return <svg {...common}><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="14" y2="17"></line></svg>;
+                case 'log-out': return <svg {...common}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>;
+                case 'log-in': return <svg {...common}><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg>;
+                case 'trash': return <svg {...common}><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>;
+                case 'info': return <svg {...common}><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>;
+                case 'search': return <svg {...common}><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>;
+                case 'bell': return <svg {...common}><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>;
+                case 'check': return <svg {...common}><polyline points="20 6 9 17 4 12"></polyline></svg>;
+                default: return null;
             }
-            dersler.forEach(ders => {
-                const durum = slotDurumu(state.aktifMekan, g.dateStr, blok, ders.label);
-                let pillHtml = '';
-                if (durum.tip === 'musait') {
-                    pillHtml = `<button class="pill musait" data-action="slot-ac" data-date="${g.dateStr}" data-block="${blok}" data-label="${esc(ders.label)}">Müsait — Talep gönder</button>`;
-                } else if (durum.tip === 'beklemede') {
-                    pillHtml = `<span class="pill beklemede ${durum.benim ? 'benim' : ''}">Beklemede${durum.benim ? ' (benim)' : ' — ' + esc(durum.bilgi.teacher)}</span>`;
-                } else {
-                    pillHtml = `<span class="pill dolu">Dolu — ${esc(durum.bilgi.teacher)}</span>`;
-                }
-                html += `<div class="slot-row">
-                    <div><div class="s-lbl">${esc(ders.label)}</div><div class="s-time">${ders.start}–${ders.end}</div></div>
-                    <div class="slot-pill">${pillHtml}</div>
-                </div>`;
+        };
+
+        // ================== SABİT AYARLAR ==================
+        const SISTEM_ADI = "İdare Rezervasyon Sistemi";
+        const SISTEM_KISA = "İRS";
+        const DEFAULT_ADMIN_PASSWORD = "130513";
+        const DEFAULT_LOCATIONS = ["Konferans Salonu", "Kütüphane"];
+
+        // Sistemin kapsadığı tarih aralığı (yalnızca hafta içi günler kullanılabilir)
+        const SISTEM_BASLANGIC = new Date(2026, 8, 14);  // 14.09.2026
+        const SISTEM_BITIS = new Date(2027, 5, 25);      // 25.06.2027
+        SISTEM_BASLANGIC.setHours(0, 0, 0, 0);
+        SISTEM_BITIS.setHours(0, 0, 0, 0);
+
+        // 14.09.2026–25.06.2027 aralığındaki resmi tatiller (dini + milli, Diyanet takvimine göre).
+        // Sadece hafta içine denk gelen günler listelenmiştir (hafta sonuna denk gelenler zaten sistemde yok).
+        // Varsayılan resmi tatiller (Diyanet takvimine göre) — yönetici bunları Ayarlar > Resmi Tatiller'den
+        // ekleyip kaldırabilir. block: 'TAM' (tüm gün), 'SABAH' (sadece sabah kapalı) veya 'ÖĞLE' (sadece öğlen kapalı).
+        const DEFAULT_HOLIDAYS = [
+            { date: "2026-10-28", name: "Cumhuriyet Bayramı Arifesi", block: "ÖĞLE" },
+            { date: "2026-10-29", name: "Cumhuriyet Bayramı", block: "TAM" },
+            { date: "2027-01-01", name: "Yılbaşı", block: "TAM" },
+            { date: "2027-03-08", name: "Ramazan Bayramı Arifesi", block: "ÖĞLE" },
+            { date: "2027-03-09", name: "Ramazan Bayramı 1. Gün", block: "TAM" },
+            { date: "2027-03-10", name: "Ramazan Bayramı 2. Gün", block: "TAM" },
+            { date: "2027-03-11", name: "Ramazan Bayramı 3. Gün", block: "TAM" },
+            { date: "2027-04-23", name: "23 Nisan Ulusal Egemenlik ve Çocuk Bayramı", block: "TAM" },
+            { date: "2027-05-17", name: "Kurban Bayramı 2. Gün", block: "TAM" },
+            { date: "2027-05-18", name: "Kurban Bayramı 3. Gün", block: "TAM" },
+            { date: "2027-05-19", name: "Kurban Bayramı 4. Gün · 19 Mayıs Gençlik ve Spor Bayramı", block: "TAM" },
+        ];
+        function getDayHolidays(holidaysList, dateStr) {
+            return (holidaysList || []).filter(h => h.date === dateStr);
+        }
+        function pickHolidayForBlock(dayHolidays, block) {
+            if (!dayHolidays || !dayHolidays.length) return null;
+            return dayHolidays.find(h => h.block === 'TAM') || dayHolidays.find(h => h.block === block) || null;
+        }
+
+        const MONTHS = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+        const GUN_ADLARI = ["PAZARTESİ", "SALI", "ÇARŞAMBA", "PERŞEMBE", "CUMA"];
+        const DAY_LABELS = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma"];
+        const DAY_SHORT = ["Pzt", "Sal", "Çar", "Per", "Cum"];
+        const GUN_ADLARI_TR = { 1: "Pazartesi", 2: "Salı", 3: "Çarşamba", 4: "Perşembe", 5: "Cuma" };
+
+        const DEFAULT_MORNING_LESSONS = [
+            { label: "1. Ders", start: "08:10", end: "08:45", block: "SABAH" },
+            { label: "2. Ders", start: "08:55", end: "09:30", block: "SABAH" },
+            { label: "3. Ders", start: "09:40", end: "10:15", block: "SABAH" },
+            { label: "4. Ders", start: "10:25", end: "11:00", block: "SABAH" },
+            { label: "5. Ders", start: "11:10", end: "11:45", block: "SABAH" },
+            { label: "6. Ders", start: "11:55", end: "12:30", block: "SABAH" },
+        ];
+        const DEFAULT_AFTERNOON_LESSONS = [
+            { label: "1. Ders", start: "13:00", end: "13:35", block: "ÖĞLE" },
+            { label: "2. Ders", start: "13:45", end: "14:20", block: "ÖĞLE" },
+            { label: "3. Ders", start: "14:30", end: "15:05", block: "ÖĞLE" },
+            { label: "4. Ders", start: "15:15", end: "15:50", block: "ÖĞLE" },
+            { label: "5. Ders", start: "16:00", end: "16:35", block: "ÖĞLE" },
+            { label: "6. Ders", start: "16:45", end: "17:20", block: "ÖĞLE" },
+        ];
+        // Not: Sözlük eşleşmeleri (findBooking vs.) orijinal "1. DERS" etiketleriyle
+        // kurulduğu için görüntülenen metin değişse de dahili karşılaştırma etiket
+        // değerine göre çalışır. Etiketleri "1. Ders" olarak güncelledik; bu sadece
+        // görünümü değil dahili kimliği de değiştirdiği için tutarlıdır (yeni kurulum).
+
+        // Ay seçenekleri (yalnızca sistem aralığındaki aylar)
+        const MONTH_OPTIONS = (() => {
+            const opts = [];
+            let y = SISTEM_BASLANGIC.getFullYear(), m = SISTEM_BASLANGIC.getMonth();
+            while (y < SISTEM_BITIS.getFullYear() || (y === SISTEM_BITIS.getFullYear() && m <= SISTEM_BITIS.getMonth())) {
+                opts.push({ year: y, month: m, label: `${MONTHS[m]} ${y}` });
+                m++; if (m > 11) { m = 0; y++; }
+            }
+            return opts;
+        })();
+
+        function slugify(str) {
+            return (str || "").toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() || "yer";
+        }
+
+        function toDateStrLocal(d) {
+            const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        }
+
+        function normalizeDate(d) {
+            const n = new Date(d);
+            n.setHours(0, 0, 0, 0);
+            return n;
+        }
+
+        function isInSystemRange(d) {
+            const n = normalizeDate(d);
+            return n.getTime() >= SISTEM_BASLANGIC.getTime() && n.getTime() <= SISTEM_BITIS.getTime();
+        }
+
+        function bookingDocId(location, dateStr, block, label) {
+            return `${slugify(location)}-${dateStr}-${block}-${label}`.replace(/\s+/g, '-');
+        }
+
+        function trUpper(str) {
+            return (str || '').toLocaleUpperCase('tr-TR');
+        }
+
+        function formatDateStrDisplay(s) {
+            if (!s) return '';
+            const [y, m, d] = s.split('-');
+            return `${d}.${m}.${y}`;
+        }
+
+        // ---- BULUT BAĞLANTISI (Firebase Realtime Database) ----
+        // Rezervasyon sistemi kendi bağımsız Firebase projesini kullanır
+        // (rezervasyon1453) — Nöbet Bulut'tan tamamen ayrı, birbirini etkilemez.
+        const FIREBASE_CONFIG = {
+            apiKey: "AIzaSyBOxPxve4zU-5zE14pWiaNFWlF-Rc6I6cA",
+            authDomain: "rezervasyon1453.firebaseapp.com",
+            databaseURL: "https://rezervasyon1453-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "rezervasyon1453",
+            storageBucket: "rezervasyon1453.firebasestorage.app",
+            messagingSenderId: "383193041629",
+            appId: "1:383193041629:web:8eebc09ef5a62197b1e934",
+            measurementId: "G-0V13E541LN"
+        };
+        const RZ_AYARLAR_PATH = 'rezervasyon/ayarlar';
+        const RZ_BOOKINGS_PATH = 'rezervasyon/onayliRezervasyonlar';
+        const RZ_TALEPLER_PATH = 'rezervasyon/talepler';
+
+        function App() {
+            const role = 'teacher'; // Bu, öğretmenler için herkese açık talep sayfası — yönetici girişi yok.
+            const [settings, setSettings] = useState({ locations: DEFAULT_LOCATIONS, adminPassword: DEFAULT_ADMIN_PASSWORD, schoolName: SISTEM_ADI, schoolSubtitle: '', logoDataUrl: '', holidays: DEFAULT_HOLIDAYS, lessonTimes: { morning: DEFAULT_MORNING_LESSONS, afternoon: DEFAULT_AFTERNOON_LESSONS } });
+            const [newHolidayForm, setNewHolidayForm] = useState({ date: '', name: '', block: 'TAM' });
+            const [activeBlock, setActiveBlock] = useState('SABAH'); // 'SABAH' | 'ÖĞLE'
+
+            // Ders saatleri: Ayarlar > Ders Saatleri sekmesinden güncellenebilir; tüm
+            // sistemde (masaüstü + mobil tablo, toplu oluşturma vb.) buradan türetilir.
+            const MORNING_LESSONS = settings.lessonTimes?.morning || DEFAULT_MORNING_LESSONS;
+            const AFTERNOON_LESSONS = settings.lessonTimes?.afternoon || DEFAULT_AFTERNOON_LESSONS;
+            const ALL_PERIODS = [...MORNING_LESSONS, ...AFTERNOON_LESSONS];
+
+            // Bu genel sürümde giriş/kimlik doğrulama yok (rol her zaman 'teacher').
+
+            const [activeLocation, setActiveLocation] = useState(DEFAULT_LOCATIONS[0]);
+            const [bookings, setBookings] = useState([]); // { id, location, date, lessonLabel, block, teacher, activity, timestamp }
+            const [cloudStatus, setCloudStatus] = useState('baglaniyor'); // baglaniyor | senkron | hata
+            const fbDbRef = React.useRef(null);
+            const [talepler, setTalepler] = useState({}); // { pushId: { id, location, date, lessonLabel, block, teacher, activity, durum, olusturmaZamani } }
+            const [showTaleplerimModal, setShowTaleplerimModal] = useState(false);
+            const [talepGonderHata, setTalepGonderHata] = useState('');
+            const [talepGonderiliyor, setTalepGonderiliyor] = useState(false);
+            const [editingCell, setEditingCell] = useState(null);
+            const [currentDate, setCurrentDate] = useState(new Date(SISTEM_BASLANGIC));
+            const [isSnapshotMode, setIsSnapshotMode] = useState(false);
+            const [isCapturing, setIsCapturing] = useState(false);
+            const [showMobileMenu, setShowMobileMenu] = useState(false);
+            const [showDateJump, setShowDateJump] = useState(false);
+
+            const [showSettingsModal, setShowSettingsModal] = useState(false);
+            const [settingsTab, setSettingsTab] = useState('okul'); // okul | mekan | sifre | toplu | kurslar
+            const [editingGroupKey, setEditingGroupKey] = useState(null);
+            const [conflictDialog, setConflictDialog] = useState(null);
+            const [newLocationInput, setNewLocationInput] = useState('');
+            const [bulkForm, setBulkForm] = useState({
+                location: '', teacher: '', activity: '', startDate: toDateStrLocal(SISTEM_BASLANGIC), endDate: toDateStrLocal(SISTEM_BITIS),
+                days: [], periods: []
             });
-        });
-        html += `</div>`;
-    });
+            const [bulkResult, setBulkResult] = useState('');
 
-    html += `<div class="footnote">Gönderdiğiniz talepler yönetici onayından sonra kesinleşir. Onay durumunu "Taleplerim" üzerinden takip edebilirsiniz.</div>`;
+            // Buluta bağlan: önce sessizce anonim giriş yapılır (güvenlik kuralları
+            // "auth != null" istiyor), giriş tamamlanınca ayarlar ve onaylı
+            // rezervasyonlar Firebase'den canlı okunur. Böylece uygulama hangi
+            // cihazdan açılırsa açılsın aynı veri görünür.
+            useEffect(() => {
+                if (!(window.firebase && firebase.apps && firebase.apps.length)) {
+                    firebase.initializeApp(FIREBASE_CONFIG);
+                }
+                const db = firebase.database();
+                const auth = firebase.auth();
+                fbDbRef.current = db;
 
-    html += `<button class="fab" data-action="taleplerim-ac">Taleplerim ${benimKayitlar.length ? `<span class="badge">${benimKayitlar.length}</span>` : ''}</button>`;
+                let ayarlarRef = null, bookingsRef = null, taleplerRef = null, ayarlarCb = null, bookingsCb = null, taleplerCb = null;
 
-    // Talep modalı
-    if (state.modalSlot) {
-        const s = state.modalSlot;
-        html += `<div class="overlay">
-            <div class="sheet">
-                <h3>Rezervasyon Talebi</h3>
-                <div class="sub">${esc(s.location)} · ${s.dateDisplay} · ${esc(s.label)} (${s.block})</div>
-                ${state.gonderHata ? `<div class="err-box">${esc(state.gonderHata)}</div>` : ''}
-                <div class="field"><label>Ad Soyad</label><input type="text" id="inpIsim" value="${esc(kayitliIsim())}" placeholder="Adınız ve soyadınız"></div>
-                <div class="field"><label>Ne için kullanacaksınız? (opsiyonel)</label><textarea id="inpAktivite" placeholder="Örn: Veli toplantısı"></textarea></div>
-                <div class="btn-row">
-                    <button class="btn ghost" data-action="overlay-kapat">Vazgeç</button>
-                    <button class="btn primary" data-action="talep-gonder" ${state.gonderiliyor ? 'disabled' : ''}>${state.gonderiliyor ? 'Gönderiliyor…' : 'Talebi gönder'}</button>
-                </div>
-            </div>
-        </div>`;
-    }
+                const dinlemeyeBasla = () => {
+                    ayarlarRef = db.ref(RZ_AYARLAR_PATH);
+                    bookingsRef = db.ref(RZ_BOOKINGS_PATH);
+                    taleplerRef = db.ref(RZ_TALEPLER_PATH);
 
-    // Taleplerim paneli
-    if (state.taleplerimAcik) {
-        html += `<div class="overlay">
-            <div class="sheet">
-                <h3>Taleplerim</h3>
-                <div class="sub">Bu cihazdan gönderdiğiniz talepler</div>
-                ${benimKayitlar.length === 0 ? '<div class="msg">Henüz bir talep göndermediniz.</div>' : benimKayitlar.map(t => `
-                    <div class="talep-item">
-                        <div class="t-loc">${esc(t.location)}</div>
-                        <div class="t-date">${formatDateStrDisplay(t.date)} · ${esc(t.lessonLabel)}</div>
-                        <span class="durum-pill ${t.durum}">${t.durum === 'bekliyor' ? 'Onay bekliyor' : t.durum === 'onaylandi' ? 'Onaylandı' : t.durum === 'reddedildi' ? 'Reddedildi' : 'Bilinmiyor'}</span>
+                    ayarlarCb = ayarlarRef.on('value', snap => {
+                        const val = snap.val();
+                        if (val) {
+                            setSettings(prev => ({ ...prev, ...val }));
+                        } else {
+                            // Bulutta henüz veri yok: ilk kurulum, mevcut varsayılanları buluta yaz.
+                            ayarlarRef.set(settings);
+                        }
+                        setCloudStatus('senkron');
+                    }, err => { console.error('Ayarlar bulut hatası:', err); setCloudStatus('hata'); });
+
+                    bookingsCb = bookingsRef.on('value', snap => {
+                        const val = snap.val();
+                        setBookings(Array.isArray(val) ? val : (val ? Object.values(val) : []));
+                        setCloudStatus('senkron');
+                    }, err => { console.error('Rezervasyon bulut hatası:', err); setCloudStatus('hata'); });
+
+                    taleplerCb = taleplerRef.on('value', snap => {
+                        setTalepler(snap.val() || {});
+                    }, err => { console.error('Talepler bulut hatası:', err); });
+                };
+
+                const unsubAuth = auth.onAuthStateChanged(user => {
+                    if (user) {
+                        dinlemeyeBasla();
+                    } else {
+                        auth.signInAnonymously().catch(err => {
+                            console.error('Anonim giriş hatası:', err);
+                            setCloudStatus('hata');
+                        });
+                    }
+                });
+
+                return () => {
+                    unsubAuth();
+                    if (ayarlarRef) ayarlarRef.off('value', ayarlarCb);
+                    if (bookingsRef) bookingsRef.off('value', bookingsCb);
+                    if (taleplerRef) taleplerRef.off('value', taleplerCb);
+                };
+                // eslint-disable-next-line react-hooks/exhaustive-deps
+            }, []);
+
+            const pushSettingsToCloud = (obj) => {
+                if (!fbDbRef.current) return;
+                fbDbRef.current.ref(RZ_AYARLAR_PATH).set(obj).catch(err => { console.error('Ayarlar yazılamadı:', err); setCloudStatus('hata'); });
+            };
+            const pushBookingsToCloud = (arr) => {
+                if (!fbDbRef.current) return;
+                fbDbRef.current.ref(RZ_BOOKINGS_PATH).set(arr).catch(err => { console.error('Rezervasyon yazılamadı:', err); setCloudStatus('hata'); });
+            };
+            const commitSettings = (next) => { setSettings(next); pushSettingsToCloud(next); };
+            const commitBookings = (next) => { setBookings(next); pushBookingsToCloud(next); };
+
+            const taleplerListesi = useMemo(() => {
+                return Object.entries(talepler)
+                    .map(([key, t]) => ({ ...t, key }))
+                    .sort((a, b) => (a.olusturmaZamani || 0) - (b.olusturmaZamani || 0));
+            }, [talepler]);
+
+            // Bu cihazdan gönderilen taleplerin anahtarları localStorage'da tutulur;
+            // canlı talepler verisiyle eşleştirilip güncel durumu (bekliyor/onaylandı/
+            // reddedildi) gösterilir.
+            const [benimTalepAnahtarlari, setBenimTalepAnahtarlari] = useState(() => {
+                try { return JSON.parse(localStorage.getItem('rz_talep_anahtarlarim') || '[]'); } catch (e) { return []; }
+            });
+            const benimTalepKayitlari = useMemo(() => {
+                return benimTalepAnahtarlari
+                    .map(key => taleplerListesi.find(t => t.key === key))
+                    .filter(Boolean)
+                    .reverse();
+            }, [benimTalepAnahtarlari, taleplerListesi]);
+            const benimBekleyenSayisi = useMemo(() => benimTalepKayitlari.filter(t => t.durum === 'bekliyor').length, [benimTalepKayitlari]);
+
+            const findTalep = useCallback((day, lesson) => {
+                if (!day.valid) return null;
+                return taleplerListesi.find(t => t.durum === 'bekliyor' && t.location === activeLocation && t.date === day.dateStr && t.block === lesson.block && t.lessonLabel === lesson.label) || null;
+            }, [taleplerListesi, activeLocation]);
+
+            const talepGonder = (isim, aktivite) => {
+                isim = (isim || '').trim();
+                if (!isim) { setTalepGonderHata('Lütfen adınızı ve soyadınızı yazın.'); return; }
+                if (!editingCell || !fbDbRef.current) return;
+                const day = editingCell, lesson = editingCell.lesson;
+                const guncelTalep = findTalep(day, lesson);
+                const guncelBooking = findBooking(day, lesson);
+                if (guncelBooking || guncelTalep) { setTalepGonderHata('Bu saat için durum değişti, lütfen pencereyi kapatıp tekrar deneyin.'); return; }
+
+                setTalepGonderHata('');
+                setTalepGonderiliyor(true);
+                localStorage.setItem('rz_talep_isim', isim);
+                const kayit = { location: activeLocation, date: day.dateStr, lessonLabel: lesson.label, block: lesson.block, teacher: isim, activity: (aktivite || '').trim(), durum: 'bekliyor', olusturmaZamani: Date.now() };
+                fbDbRef.current.ref(RZ_TALEPLER_PATH).push(kayit).then(ref => {
+                    const yeniAnahtarlar = [ref.key, ...benimTalepAnahtarlari].slice(0, 80);
+                    setBenimTalepAnahtarlari(yeniAnahtarlar);
+                    localStorage.setItem('rz_talep_anahtarlarim', JSON.stringify(yeniAnahtarlar));
+                    setTalepGonderiliyor(false);
+                    setEditingCell(null);
+                }).catch(err => {
+                    console.error('Talep gönderilemedi:', err);
+                    setTalepGonderiliyor(false);
+                    setTalepGonderHata('Gönderilemedi, internet bağlantınızı kontrol edip tekrar deneyin.');
+                });
+            };
+
+            useEffect(() => {
+                if (!bulkResult) return;
+                const t = setTimeout(() => setBulkResult(''), 3000);
+                return () => clearTimeout(t);
+            }, [bulkResult]);
+
+            // Herhangi bir pencere açıkken arka plan sayfasının kaymasını tamamen engelle
+            useEffect(() => {
+                const anyModalOpen = showSettingsModal || !!editingCell || showMobileMenu || isSnapshotMode || !!conflictDialog || showTaleplerimModal;
+                if (anyModalOpen) {
+                    const prevOverflow = document.body.style.overflow;
+                    const prevPosition = document.body.style.position;
+                    const prevWidth = document.body.style.width;
+                    const scrollY = window.scrollY;
+                    document.body.style.overflow = 'hidden';
+                    document.body.style.position = 'fixed';
+                    document.body.style.width = '100%';
+                    document.body.style.top = `-${scrollY}px`;
+                    return () => {
+                        document.body.style.overflow = prevOverflow;
+                        document.body.style.position = prevPosition;
+                        document.body.style.width = prevWidth;
+                        document.body.style.top = '';
+                        window.scrollTo(0, scrollY);
+                    };
+                }
+            }, [showSettingsModal, editingCell, showMobileMenu, isSnapshotMode, conflictDialog, showTaleplerimModal]);
+
+            // Yeni bir hücre açıldığında (ya da kapandığında) önceki talep formu
+            // hatasını/gönderiliyor durumunu sıfırla.
+            useEffect(() => {
+                setTalepGonderHata('');
+                setTalepGonderiliyor(false);
+            }, [editingCell]);
+
+            // Aktif mekanı ayarlar değiştiğinde doğrula
+            useEffect(() => {
+                if (!settings.locations || !settings.locations.length) return;
+                if (!settings.locations.includes(activeLocation)) {
+                    setActiveLocation(settings.locations[0]);
+                }
+            }, [settings.locations]);
+
+            const weekDays = useMemo(() => {
+                const dCopy = new Date(currentDate);
+                const day = dCopy.getDay();
+                const diff = dCopy.getDate() - day + (day === 0 ? -6 : 1);
+                dCopy.setDate(diff);
+
+                return Array.from({ length: 5 }, (_, i) => {
+                    const d = new Date(dCopy);
+                    d.setDate(dCopy.getDate() + i);
+                    d.setHours(0, 0, 0, 0);
+                    const dateStr = toDateStrLocal(d);
+                    return {
+                        name: GUN_ADLARI[i],
+                        fullName: GUN_ADLARI[i],
+                        dateStr,
+                        display: d.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit' }),
+                        monthIndex: d.getMonth(),
+                        dayNumber: d.getDate(),
+                        year: d.getFullYear(),
+                        valid: isInSystemRange(d),
+                        dayHolidays: getDayHolidays(settings.holidays, dateStr)
+                    };
+                });
+            }, [currentDate, settings.holidays]);
+
+            const canGoPrevWeek = useMemo(() => {
+                const first = new Date(weekDays[0].dateStr);
+                first.setDate(first.getDate() - 7);
+                return first.getTime() + 6 * 86400000 >= SISTEM_BASLANGIC.getTime();
+            }, [weekDays]);
+
+            const canGoNextWeek = useMemo(() => {
+                const last = new Date(weekDays[4].dateStr);
+                last.setDate(last.getDate() + 7);
+                return last.getTime() - 6 * 86400000 <= SISTEM_BITIS.getTime();
+            }, [weekDays]);
+
+            const findBooking = useCallback((day, lesson) => {
+                if (!day || !lesson || !lesson.block || !lesson.label) return null;
+                return bookings.find(b =>
+                    b.location === activeLocation && b.date === day.dateStr &&
+                    b.lessonLabel === lesson.label && b.block === lesson.block
+                ) || null;
+            }, [bookings, activeLocation]);
+
+            const headerDateString = useMemo(() => {
+                if (!weekDays?.[0]) return "";
+                const first = weekDays[0], last = weekDays[4];
+                const firstDay = first.dayNumber.toString().padStart(2, '0');
+                const lastDay = last.dayNumber.toString().padStart(2, '0');
+                const firstMonth = MONTHS[first.monthIndex] || "";
+                const lastMonth = MONTHS[last.monthIndex] || "";
+                if (first.year !== last.year) {
+                    return `${firstDay} ${firstMonth} ${first.year} – ${lastDay} ${lastMonth} ${last.year}`;
+                }
+                if (first.monthIndex !== last.monthIndex) {
+                    return `${firstDay} ${firstMonth} – ${lastDay} ${lastMonth} ${last.year}`;
+                }
+                return `${firstDay}–${lastDay} ${firstMonth} ${last.year}`;
+            }, [weekDays]);
+
+            const upsertBooking = (booking) => {
+                commitBookings([...bookings.filter(b => b.id !== booking.id), booking]);
+            };
+            const removeBookingById = (id) => {
+                commitBookings(bookings.filter(b => b.id !== id));
+            };
+
+            const handleSaveBooking = (e) => {
+                e.preventDefault();
+                if (!editingCell || role !== 'admin' || !editingCell.valid) return;
+                const form = new FormData(e.target);
+                const id = bookingDocId(activeLocation, editingCell.dateStr, editingCell.lesson.block, editingCell.lesson.label);
+                upsertBooking({
+                    id, location: activeLocation, date: editingCell.dateStr,
+                    lessonLabel: editingCell.lesson.label, block: editingCell.lesson.block,
+                    teacher: form.get('teacher'), activity: form.get('activity'), timestamp: Date.now()
+                });
+                setEditingCell(null);
+            };
+
+            const handleDeleteCurrentBooking = () => {
+                if (!editingCell) return;
+                const b = findBooking(editingCell, editingCell.lesson);
+                if (!b) return;
+                removeBookingById(b.id);
+                setEditingCell(null);
+            };
+
+            const handleSaveSettings = (partial) => {
+                if (role !== 'admin') return;
+                commitSettings({ ...settings, ...partial });
+            };
+
+            const handleLogoChange = (e) => {
+                const file = e.target.files && e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = () => handleSaveSettings({ logoDataUrl: reader.result });
+                reader.readAsDataURL(file);
+                e.target.value = '';
+            };
+
+            const handleAddLocation = () => {
+                const name = newLocationInput.trim();
+                if (!name || settings.locations.includes(name)) return;
+                handleSaveSettings({ locations: [...settings.locations, name] });
+                setNewLocationInput('');
+            };
+
+            const handleRemoveLocation = (loc) => {
+                const remaining = settings.locations.filter(l => l !== loc);
+                handleSaveSettings({ locations: remaining.length ? remaining : DEFAULT_LOCATIONS });
+            };
+
+            const handleAddHoliday = () => {
+                const { date, name, block } = newHolidayForm;
+                if (!date || !name.trim()) return;
+                const list = settings.holidays || [];
+                const filtered = list.filter(h => !(h.date === date && h.block === block));
+                handleSaveSettings({ holidays: [...filtered, { date, name: name.trim(), block }].sort((a, b) => a.date < b.date ? -1 : 1) });
+                setNewHolidayForm({ date: '', name: '', block: 'TAM' });
+            };
+
+            const handleRemoveHoliday = (date, block) => {
+                handleSaveSettings({ holidays: (settings.holidays || []).filter(h => !(h.date === date && h.block === block)) });
+            };
+
+            const handleSaveLessonTimes = (blockKey, index, field, value) => {
+                if (role !== 'admin') return;
+                const mapKey = blockKey === 'SABAH' ? 'morning' : 'afternoon';
+                const current = settings.lessonTimes?.[mapKey] || (blockKey === 'SABAH' ? DEFAULT_MORNING_LESSONS : DEFAULT_AFTERNOON_LESSONS);
+                const updated = current.map((l, i) => i === index ? { ...l, [field]: value } : l);
+                handleSaveSettings({
+                    lessonTimes: {
+                        morning: settings.lessonTimes?.morning || DEFAULT_MORNING_LESSONS,
+                        afternoon: settings.lessonTimes?.afternoon || DEFAULT_AFTERNOON_LESSONS,
+                        [mapKey]: updated
+                    }
+                });
+            };
+
+            const toggleBulkDay = (dayIdx) => {
+                setBulkForm(f => ({ ...f, days: f.days.includes(dayIdx) ? f.days.filter(d => d !== dayIdx) : [...f.days, dayIdx] }));
+            };
+            const toggleBulkPeriod = (key) => {
+                setBulkForm(f => ({ ...f, periods: f.periods.includes(key) ? f.periods.filter(p => p !== key) : [...f.periods, key] }));
+            };
+
+            const handleCreateCourse = (e) => {
+                e.preventDefault();
+                if (role !== 'admin') return;
+                const loc = bulkForm.location || activeLocation;
+                if (!loc || !bulkForm.teacher.trim() || !bulkForm.activity.trim() || !bulkForm.days.length || !bulkForm.periods.length) {
+                    setBulkResult('Lütfen tüm alanları doldurup en az bir gün ve bir ders saati seçin.');
+                    return;
+                }
+                const start = new Date(bulkForm.startDate); start.setHours(0, 0, 0, 0);
+                const end = new Date(bulkForm.endDate); end.setHours(0, 0, 0, 0);
+                const newOnes = [];
+                for (let d = new Date(Math.max(start, SISTEM_BASLANGIC)); d.getTime() <= Math.min(end, SISTEM_BITIS); d.setDate(d.getDate() + 1)) {
+                    const jsDay = d.getDay(); // 1=Pzt ... 5=Cuma
+                    if (!bulkForm.days.includes(jsDay)) continue;
+                    if (!isInSystemRange(d)) continue;
+                    const dateStr = toDateStrLocal(d);
+                    for (const key of bulkForm.periods) {
+                        const period = ALL_PERIODS.find(p => `${p.block}-${p.label}` === key);
+                        if (!period) continue;
+                        const id = bookingDocId(loc, dateStr, period.block, period.label);
+                        newOnes.push({
+                            id, location: loc, date: dateStr, lessonLabel: period.label, block: period.block,
+                            teacher: bulkForm.teacher.trim(), activity: bulkForm.activity.trim(), timestamp: Date.now()
+                        });
+                    }
+                }
+                if (newOnes.length === 0) {
+                    setBulkResult('Seçilen aralıkta uygun gün/saat bulunamadı.');
+                    return;
+                }
+                const conflicts = newOnes
+                    .map(nb => ({ nb, existing: bookings.find(b => b.id === nb.id) }))
+                    .filter(x => x.existing);
+                const commit = () => {
+                    const map = new Map(bookings.map(b => [b.id, b]));
+                    newOnes.forEach(nb => map.set(nb.id, nb));
+                    commitBookings(Array.from(map.values()));
+                    setBulkResult(`${newOnes.length} ders saati başarıyla oluşturuldu / güncellendi.${conflicts.length ? ` (${conflicts.length} çakışan kaydın üzerine yazıldı.)` : ''}`);
+                    setConflictDialog(null);
+                };
+                if (conflicts.length > 0) {
+                    setConflictDialog({
+                        conflicts,
+                        onConfirm: commit,
+                        onCancel: () => {
+                            setConflictDialog(null);
+                            setBulkResult('İşlem iptal edildi — çakışan ders saatleri bulundu, hiçbir kayıt değiştirilmedi.');
+                        }
+                    });
+                    return;
+                }
+                commit();
+            };
+
+            // Rezervasyonları "kurs" olarak grupla: aynı mekan + öğretmen + etkinlik
+            const courseGroups = useMemo(() => {
+                const map = new Map();
+                bookings.forEach(b => {
+                    const key = `${b.location}|${b.teacher}|${b.activity}`;
+                    if (!map.has(key)) map.set(key, { key, location: b.location, teacher: b.teacher, activity: b.activity, sessions: [] });
+                    map.get(key).sessions.push(b);
+                });
+                return Array.from(map.values()).map(g => {
+                    const dates = g.sessions.map(s => s.date).sort();
+                    return { ...g, count: g.sessions.length, minDate: dates[0], maxDate: dates[dates.length - 1] };
+                }).sort((a, b) => (a.minDate < b.minDate ? -1 : 1));
+            }, [bookings]);
+
+            const handleDeleteGroup = (key) => {
+                commitBookings(bookings.filter(b => `${b.location}|${b.teacher}|${b.activity}` !== key));
+                if (editingGroupKey === key) setEditingGroupKey(null);
+            };
+
+            const handleUpdateGroup = (key, newTeacher, newActivity, newStartDate, newEndDate) => {
+                const groupSessions = bookings.filter(b => `${b.location}|${b.teacher}|${b.activity}` === key);
+                if (!groupSessions.length) return;
+                const location = groupSessions[0].location;
+                const weekdaySet = new Set(groupSessions.map(b => new Date(b.date).getDay()));
+                const periodSet = new Set(groupSessions.map(b => `${b.block}|${b.lessonLabel}`));
+                const start = new Date(newStartDate); start.setHours(0, 0, 0, 0);
+                const end = new Date(newEndDate); end.setHours(0, 0, 0, 0);
+                const newOnes = [];
+                for (let d = new Date(Math.max(start, SISTEM_BASLANGIC)); d.getTime() <= Math.min(end, SISTEM_BITIS); d.setDate(d.getDate() + 1)) {
+                    if (!weekdaySet.has(d.getDay())) continue;
+                    if (!isInSystemRange(d)) continue;
+                    const dateStr = toDateStrLocal(d);
+                    periodSet.forEach(pk => {
+                        const [block, label] = pk.split('|');
+                        const id = bookingDocId(location, dateStr, block, label);
+                        newOnes.push({ id, location, date: dateStr, lessonLabel: label, block, teacher: newTeacher, activity: newActivity, timestamp: Date.now() });
+                    });
+                }
+                const conflicts = newOnes
+                    .map(nb => ({ nb, existing: bookings.find(b => b.id === nb.id && `${b.location}|${b.teacher}|${b.activity}` !== key) }))
+                    .filter(x => x.existing);
+                const commit = () => {
+                    const filtered = bookings.filter(b => `${b.location}|${b.teacher}|${b.activity}` !== key);
+                    const map = new Map(filtered.map(b => [b.id, b]));
+                    newOnes.forEach(nb => map.set(nb.id, nb));
+                    commitBookings(Array.from(map.values()));
+                    setEditingGroupKey(null);
+                    setConflictDialog(null);
+                };
+                if (conflicts.length > 0) {
+                    setConflictDialog({
+                        conflicts,
+                        onConfirm: commit,
+                        onCancel: () => setConflictDialog(null)
+                    });
+                    return;
+                }
+                commit();
+            };
+
+            const handleExportBackup = () => {
+                const data = { settings, bookings, exportedAt: new Date().toISOString() };
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `rezervasyon-yedek-${toDateStrLocal(new Date())}.json`;
+                link.click();
+                URL.revokeObjectURL(url);
+            };
+
+            const handleImportBackup = (e) => {
+                const file = e.target.files && e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = () => {
+                    try {
+                        const data = JSON.parse(reader.result);
+                        if (!data || typeof data !== 'object') throw new Error('invalid');
+                        if (window.confirm('Mevcut tüm veriler yedekteki verilerle değiştirilecek. Devam edilsin mi?')) {
+                            if (data.settings && typeof data.settings === 'object') commitSettings({ ...settings, ...data.settings });
+                            if (Array.isArray(data.bookings)) commitBookings(data.bookings);
+                        }
+                    } catch (err) {
+                        alert('Geçersiz yedek dosyası.');
+                    }
+                };
+                reader.readAsText(file);
+                e.target.value = '';
+            };
+
+            const processImage = async (mode = 'share') => {
+                if (isCapturing) return;
+                setIsCapturing(true);
+                try {
+                    window.scrollTo(0, 0);
+                    const target = document.getElementById('printable-table-area');
+                    // Mobilde tarayıcı penceresi tablodan (1500px) çok daha dar olduğu
+                    // için html2canvas varsayılan olarak yalnızca görünen dar alanı
+                    // yakalıyordu (haftanın ilk günüyle kesiliyordu). windowWidth'i
+                    // tablonun gerçek genişliğine eşitleyerek tüm haftayı yakalıyoruz.
+                    const fullWidth = Math.max(target.scrollWidth, target.offsetWidth);
+                    // html2canvas kendi iç düzen hesaplamasında (özellikle otomatik
+                    // yüksekliğe sahip grid satırlarında) canlı sayfadan birkaç piksel
+                    // farklı ölçüm yapabiliyor; son satırın kesilmesini önlemek için
+                    // güvenlik payı ekliyoruz (fazlası sorun değil, sadece boş alan olur).
+                    const fullHeight = Math.max(target.scrollHeight, target.offsetHeight) + 80;
+                    const canvas = await html2canvas(target, {
+                        scale: 2,
+                        backgroundColor: "#FCFBF6",
+                        useCORS: true,
+                        width: fullWidth,
+                        height: fullHeight,
+                        windowWidth: fullWidth,
+                        windowHeight: fullHeight,
+                        scrollX: 0,
+                        scrollY: 0
+                    });
+                    if (mode === 'download') {
+                        const link = document.createElement('a');
+                        link.href = canvas.toDataURL('image/png'); link.download = `Program.png`; link.click();
+                    } else if (navigator.share) {
+                        const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+                        await navigator.share({ files: [new File([blob], 'program.png', { type: 'image/png' })], title: 'Rezervasyon Programı' });
+                    }
+                } catch (e) { console.error("Image Fail", e); }
+                setIsCapturing(false);
+            };
+
+            const currentBooking = editingCell ? findBooking(editingCell, editingCell.lesson) : null;
+            const currentTalep = editingCell ? findTalep(editingCell, editingCell.lesson) : null;
+            const openSnapshotMode = () => { window.scrollTo(0, 0); setIsSnapshotMode(true); };
+            const goToday = () => setCurrentDate(new Date(SISTEM_BASLANGIC.getTime() >= Date.now() ? SISTEM_BASLANGIC : Math.min(Math.max(Date.now(), SISTEM_BASLANGIC.getTime()), SISTEM_BITIS.getTime())));
+
+            const jumpToDate = (dateStr) => {
+                if (!dateStr) return;
+                const [y, m, d] = dateStr.split('-').map(Number);
+                let target = new Date(y, m - 1, d);
+                target.setHours(0, 0, 0, 0);
+                if (target < SISTEM_BASLANGIC) target = new Date(SISTEM_BASLANGIC);
+                if (target > SISTEM_BITIS) target = new Date(SISTEM_BITIS);
+                setCurrentDate(target);
+                setShowDateJump(false);
+            };
+
+            return (
+                <div id="app-shell" className={`min-h-screen pb-24 md:pb-10 ${isSnapshotMode ? 'snapshot-active' : ''}`}>
+
+                    {/* ============ ÜST ÇUBUK ============ */}
+                    <header className="no-snapshot sticky top-0 z-40 safe-t border-b" style={{ background: 'rgba(242,241,231,0.92)', backdropFilter: 'blur(10px)', borderColor: 'var(--line)' }}>
+                        <div className="max-w-6xl mx-auto px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 font-display font-bold text-xl overflow-hidden" style={{ color: 'var(--teal-dark)' }}>
+                                    {settings.logoDataUrl ? <img src={settings.logoDataUrl} alt="Okul logosu" className="w-full h-full object-cover" /> : (settings.schoolName || SISTEM_KISA).charAt(0)}
+                                </div>
+                                <div className="min-w-0">
+                                    <h1 className="font-display font-semibold text-lg sm:text-2xl leading-tight truncate" style={{ color: 'var(--ink)' }}>{settings.schoolName || SISTEM_ADI}</h1>
+                                    <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
+                                        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: 'var(--teal)' }}></span>
+                                        <span className="text-xs sm:text-sm font-medium truncate" style={{ color: 'var(--ink-soft)' }}>
+                                            Ortak Alan Rezervasyon Talebi{settings.schoolSubtitle ? ` · ${settings.schoolSubtitle}` : ''}
+                                        </span>
+                                        {cloudStatus !== 'senkron' && (
+                                            <span className="text-[10px] sm:text-xs font-semibold shrink-0" style={{ color: cloudStatus === 'hata' ? 'var(--brick)' : 'var(--ink-soft)' }} title="Bulut senkronizasyon durumu">
+                                                {cloudStatus === 'hata' ? '· bulut hatası' : '· buluta bağlanıyor…'}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Masaüstü aksiyonları */}
+                            <div className="hidden md:flex items-center gap-2 shrink-0">
+                                <button onClick={() => setShowTaleplerimModal(true)} className="relative flex items-center gap-2 px-4 py-2.5 rounded-xl text-base font-semibold border transition-colors" style={{ borderColor: 'var(--line)', color: 'var(--ink)' }}>
+                                    <Icon name="bell" className="w-5 h-5" /> Taleplerim
+                                    {benimBekleyenSayisi > 0 && (
+                                        <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full text-white text-[11px] font-bold flex items-center justify-center" style={{ background: 'var(--ochre)' }}>{benimBekleyenSayisi}</span>
+                                    )}
+                                </button>
+                                <button onClick={openSnapshotMode} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-base font-semibold border transition-colors" style={{ borderColor: 'var(--line)', color: 'var(--ink)' }}>
+                                    <Icon name="camera" className="w-5 h-5" /> Paylaş
+                                </button>
+                            </div>
+
+                            {/* Mobil: hızlı paylaş + menü */}
+                            <div className="flex md:hidden items-center gap-1.5 shrink-0">
+                                <button onClick={openSnapshotMode} className="w-11 h-11 rounded-xl flex items-center justify-center border" style={{ borderColor: 'var(--line)' }} aria-label="Paylaş">
+                                    <Icon name="camera" className="w-5 h-5" style={{ color: 'var(--ink)' }} />
+                                </button>
+                                <button onClick={() => setShowMobileMenu(true)} className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: 'var(--ink)' }} aria-label="Menü">
+                                    <Icon name="menu" className="w-5 h-5 text-white" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Mekan sekmeleri */}
+                        <div className="max-w-6xl mx-auto px-3 sm:px-6 pb-2 sm:pb-3">
+                            <div className="flex gap-1.5 p-1 rounded-xl overflow-x-auto scrollbar-hide" style={{ background: 'var(--paper-2)' }}>
+                                {settings.locations.map(loc => (
+                                    <button key={loc} onClick={() => setActiveLocation(loc)} className="flex-none px-5 py-2.5 rounded-lg text-base font-semibold whitespace-nowrap transition-all" style={activeLocation === loc ? { background: 'var(--panel)', color: 'var(--teal-dark)', boxShadow: '0 1px 2px rgba(32,38,31,0.12)' } : { color: 'var(--ink-soft)' }}>
+                                        {loc}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* ============ MOBİL MENÜ (SLIDE-OVER) ============ */}
+                    {showMobileMenu && (
+                        <div className="no-snapshot fixed inset-0 z-[850] md:hidden">
+                            <div className="absolute inset-0 bg-black/40" onClick={() => setShowMobileMenu(false)}></div>
+                            <div className="absolute top-0 right-0 h-full w-[82%] max-w-xs bg-white shadow-2xl flex flex-col safe-t" style={{ background: 'var(--panel)' }}>
+                                <div className="flex items-center justify-between p-5 border-b" style={{ borderColor: 'var(--line)' }}>
+                                    <span className="font-display font-semibold text-lg">Menü</span>
+                                    <button onClick={() => setShowMobileMenu(false)} className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: 'var(--paper-2)' }}>
+                                        <Icon name="x" className="w-5 h-5" />
+                                    </button>
+                                </div>
+                                <div className="p-5 flex-1 overflow-y-auto space-y-2">
+                                    <div className="px-1 pb-2 text-xs font-medium" style={{ color: 'var(--ink-soft)' }}>
+                                        Rezervasyon talebi göndermek için boş bir saate dokunun.
+                                    </div>
+                                    <button onClick={() => { setShowTaleplerimModal(true); setShowMobileMenu(false); }} className="w-full flex items-center justify-between gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold border" style={{ borderColor: 'var(--line)' }}>
+                                        <span className="flex items-center gap-3"><Icon name="bell" className="w-4 h-4" /> Taleplerim</span>
+                                        {benimBekleyenSayisi > 0 && (
+                                            <span className="min-w-[20px] h-5 px-1 rounded-full text-white text-[11px] font-bold flex items-center justify-center" style={{ background: 'var(--ochre)' }}>{benimBekleyenSayisi}</span>
+                                        )}
+                                    </button>
+                                </div>
+                                <div className="p-5 text-[11px] font-medium border-t" style={{ color: 'var(--ink-soft)', borderColor: 'var(--line)' }}>{SISTEM_ADI}</div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ============ TALEPLERİM MODALI ============ */}
+                    {showTaleplerimModal && (
+                        <div onClick={(e) => { if (e.target === e.currentTarget) setShowTaleplerimModal(false); }} className="no-snapshot fixed inset-0 z-[900] flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: 'rgba(32,38,31,0.6)', backdropFilter: 'blur(6px)' }}>
+                            <div className="w-full max-w-lg rounded-t-3xl sm:rounded-3xl p-6 max-h-[85vh] sm:max-h-[80vh] flex flex-col" style={{ background: 'var(--panel)' }}>
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0" style={{ background: 'var(--ochre-tint)' }}>
+                                            <Icon name="bell" className="w-5 h-5" style={{ color: 'var(--ochre)' }} />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-display font-semibold text-xl">Taleplerim</h3>
+                                            <p className="text-xs font-medium" style={{ color: 'var(--ink-soft)' }}>Bu cihazdan gönderdiğiniz talepler</p>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => setShowTaleplerimModal(false)} className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: 'var(--paper-2)' }}>
+                                        <Icon name="x" className="w-5 h-5" />
+                                    </button>
+                                </div>
+                                <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+                                    {benimTalepKayitlari.length === 0 && (
+                                        <p className="text-sm font-medium text-center py-10" style={{ color: 'var(--ink-soft)' }}>Henüz bir talep göndermediniz.</p>
+                                    )}
+                                    {benimTalepKayitlari.map(t => (
+                                        <div key={t.key} className="rounded-xl border p-3.5" style={{ borderColor: 'var(--line)' }}>
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div>
+                                                    <div className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>{trUpper(t.location)}</div>
+                                                    <div className="text-xs font-medium mt-0.5" style={{ color: 'var(--ink-soft)' }}>{formatDateStrDisplay(t.date)} · {t.lessonLabel}</div>
+                                                </div>
+                                                <span className="shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold" style={
+                                                    t.durum === 'onaylandi' ? { background: 'var(--green-tint)', color: 'var(--green)' } :
+                                                    t.durum === 'reddedildi' ? { background: 'var(--brick-tint)', color: 'var(--brick)' } :
+                                                    { background: 'var(--ochre-tint)', color: 'var(--ochre)' }
+                                                }>
+                                                    {t.durum === 'onaylandi' ? 'Onaylandı' : t.durum === 'reddedildi' ? 'Reddedildi' : 'Onay bekliyor'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+
+                    {/* ============ ÇAKIŞMA UYARISI ============ */}
+                    {conflictDialog && (
+                        <div onClick={(e) => { if (e.target === e.currentTarget) conflictDialog.onCancel(); }} className="no-snapshot fixed inset-0 z-[900] flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: 'rgba(32,38,31,0.6)', backdropFilter: 'blur(6px)' }}>
+                            <div className="w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6" style={{ background: 'var(--panel)' }}>
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0" style={{ background: 'var(--brick-tint)' }}>
+                                        <Icon name="info" className="w-5 h-5" style={{ color: 'var(--brick)' }} />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-display font-semibold text-lg">Çakışma bulundu</h3>
+                                        <p className="text-xs font-medium" style={{ color: 'var(--ink-soft)' }}>{conflictDialog.conflicts.length} ders saati zaten dolu</p>
+                                    </div>
+                                </div>
+                                <div className="max-h-56 overflow-y-auto space-y-1.5 mb-4 pr-1">
+                                    {conflictDialog.conflicts.slice(0, 30).map((c, i) => (
+                                        <div key={i} className="text-xs font-medium px-3 py-2 rounded-lg" style={{ background: 'var(--paper-2)', color: 'var(--ink-soft)' }}>
+                                            {formatDateStrDisplay(c.nb.date)} · {c.nb.lessonLabel} — dolu: <span className="font-semibold" style={{ color: 'var(--ink)' }}>{trUpper(c.existing.teacher)}</span> ({trUpper(c.existing.activity)})
+                                        </div>
+                                    ))}
+                                    {conflictDialog.conflicts.length > 30 && (
+                                        <div className="text-xs font-medium" style={{ color: 'var(--ink-soft)' }}>...ve {conflictDialog.conflicts.length - 30} tane daha</div>
+                                    )}
+                                </div>
+                                <p className="text-xs font-medium mb-4" style={{ color: 'var(--ink-soft)' }}>Devam ederseniz bu saatlerdeki mevcut kayıtların üzerine yazılacak.</p>
+                                <div className="flex gap-2">
+                                    <button onClick={conflictDialog.onConfirm} className="flex-1 py-3 rounded-xl text-white font-semibold text-sm" style={{ background: 'var(--brick)' }}>Üzerine yaz, devam et</button>
+                                    <button onClick={conflictDialog.onCancel} className="flex-1 py-3 rounded-xl font-semibold text-sm" style={{ background: 'var(--paper-2)', color: 'var(--ink)' }}>İptal</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ============ GÖRÜNTÜ YAKALAMA PANELİ ============ */}
+                    {isSnapshotMode && (
+                        <div className="fixed top-3 left-3 right-3 z-[999] flex flex-col items-center p-5 rounded-3xl" style={{ background: 'var(--ink)' }}>
+                            <div className="flex items-center gap-3 mb-4 text-left w-full max-w-xl">
+                                <div className="p-2.5 rounded-xl" style={{ background: 'rgba(46,107,91,0.3)' }}>
+                                    <Icon name="camera" className="w-6 h-6" style={{ color: '#7FCBB2' }} />
+                                </div>
+                                <div className="text-white">
+                                    <div className="text-sm font-semibold">Görüntü yakalama modu</div>
+                                    <div className="text-xs opacity-60">{activeLocation}</div>
+                                </div>
+                            </div>
+                            <div className="flex flex-wrap gap-2.5 w-full max-w-xl justify-center">
+                                <button onClick={() => processImage('share')} disabled={isCapturing} className="flex-1 min-w-[120px] text-white py-4 rounded-xl font-semibold text-sm disabled:opacity-60" style={{ background: 'var(--teal)' }}>{isCapturing ? 'Hazırlanıyor…' : "WhatsApp'ta paylaş"}</button>
+                                <button onClick={() => processImage('download')} disabled={isCapturing} className="flex-1 min-w-[120px] text-white py-4 rounded-xl font-semibold text-sm disabled:opacity-60" style={{ background: '#3B5A73' }}>{isCapturing ? 'Hazırlanıyor…' : 'Kaydet'}</button>
+                                <button onClick={() => setIsSnapshotMode(false)} className="px-6 text-white py-4 rounded-xl font-semibold text-sm" style={{ background: 'var(--brick)' }}>Kapat</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ============ ANA İÇERİK ============ */}
+                    <main className="max-w-6xl mx-auto px-3 sm:px-6 pt-3">
+                        <div id="printable-table-area" className="table-wrapper rounded-3xl border overflow-hidden" style={{ background: 'var(--panel)', borderColor: 'var(--line)' }}>
+                            <div className="px-3 sm:px-6 py-1.5 sm:py-2.5 shrink-0" style={{ background: 'var(--teal-dark)' }}>
+                                <div className="flex flex-col items-center gap-0.5 sm:gap-2">
+                                    <h2 className={(isSnapshotMode ? "block" : "hidden sm:block") + " text-white font-display font-semibold text-xl sm:text-4xl leading-tight"}>{trUpper(activeLocation)}</h2>
+                                    <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 sm:py-2 rounded-full text-[11px] sm:text-base font-mono font-semibold whitespace-nowrap shadow-sm" style={{ background: 'var(--panel)', color: 'var(--teal-dark)' }}><Icon name="calendar" className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />{headerDateString} · {activeBlock === 'SABAH' ? 'Sabah' : 'Öğle'}</span>
+                                </div>
+
+                                <div className="no-snapshot flex flex-nowrap items-center justify-between gap-1.5 sm:gap-3 mt-1 sm:mt-3">
+                                    {/* Sol köşe: Sabah / Öğle */}
+                                    <div className="flex gap-0.5 p-0.5 sm:p-1 rounded-xl shrink-0" style={{ background: 'rgba(255,255,255,0.15)' }}>
+                                        {[['SABAH', 'Sabah'], ['ÖĞLE', 'Öğle']].map(([key, label]) => (
+                                            <button key={key} onClick={() => setActiveBlock(key)} className="compact-pill-btn px-1.5 sm:px-5 py-1 sm:py-2 rounded-lg text-[10px] sm:text-base font-semibold transition-all" style={activeBlock === key ? { background: 'var(--panel)', color: 'var(--teal-dark)' } : { color: 'white' }}>
+                                                {label}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* Sağ köşe: hafta gezinmesi (ay seçici yalnızca tablet/masaüstünde) */}
+                                    <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+                                        <button disabled={!canGoPrevWeek} onClick={() => { const d = new Date(currentDate); d.setDate(d.getDate() - 7); setCurrentDate(d); }} className="compact-arrow-btn sm:w-9 sm:h-9 rounded-full flex items-center justify-center disabled:opacity-25 shrink-0" style={{ background: 'rgba(255,255,255,0.15)' }}>
+                                            <Icon name="chevron-left" className="w-4 h-4 text-white" />
+                                        </button>
+                                        <select value={`${currentDate.getFullYear()}-${currentDate.getMonth()}`} onChange={(e) => { const [y, m] = e.target.value.split('-').map(Number); let target = new Date(y, m, 1); if (target < SISTEM_BASLANGIC) target = new Date(SISTEM_BASLANGIC); setCurrentDate(target); }} className="hidden sm:block select-chevron-light appearance-none text-center px-2 py-1.5 text-base font-mono font-semibold outline-none bg-transparent cursor-pointer text-white rounded-lg shrink-0" style={{ background: 'rgba(255,255,255,0.15)' }}>
+                                            {MONTH_OPTIONS.map(o => <option key={`${o.year}-${o.month}`} value={`${o.year}-${o.month}`} style={{ color: 'var(--ink)' }}>{o.label}</option>)}
+                                        </select>
+                                        <button disabled={!canGoNextWeek} onClick={() => { const d = new Date(currentDate); d.setDate(d.getDate() + 7); setCurrentDate(d); }} className="compact-arrow-btn sm:w-9 sm:h-9 rounded-full flex items-center justify-center disabled:opacity-25 shrink-0" style={{ background: 'rgba(255,255,255,0.15)' }}>
+                                            <Icon name="chevron-right" className="w-4 h-4 text-white" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Masaüstü / yakalama tablosu — CSS Grid tabanlı (html2canvas'ın <table>
+                                düzenleriyle yaşadığı render sorunlarını (metin bozulması, hatalı
+                                hizalama) tamamen ortadan kaldırmak için tablo yerine grid kullanılır) */}
+                            <div className={isSnapshotMode ? "block" : "hidden md:block overflow-x-auto"}>
+                                <div className="text-center" style={{ display: 'grid', gridTemplateColumns: '120px 150px repeat(5, minmax(140px, 1fr))', minWidth: '980px', gap: '2px', background: 'var(--line-strong)' }}>
+                                    {/* Başlık satırı */}
+                                    <div className="sticky left-0 z-20 p-3 text-base font-semibold flex items-center justify-center" style={{ background: 'var(--teal-tint)', color: 'var(--teal-dark)' }}>Ders</div>
+                                    <div className="sticky left-[120px] z-20 p-3 text-base font-mono font-semibold flex items-center justify-center" style={{ background: 'var(--paper-2)', color: 'var(--ink)' }}>Saat</div>
+                                    {weekDays.map((day, idx) => {
+                                        const headerHoliday = pickHolidayForBlock(day.dayHolidays, activeBlock);
+                                        return (
+                                            <div key={day.dateStr} className="p-3" style={{ background: !day.valid ? 'var(--paper-2)' : headerHoliday ? 'var(--ochre-tint)' : 'var(--panel)', paddingTop: isSnapshotMode ? '1.25rem' : undefined, paddingBottom: isSnapshotMode ? '1.25rem' : undefined }}>
+                                                <div className="font-display font-semibold text-lg sm:text-2xl" style={{ color: 'var(--ink)' }}>{DAY_LABELS[idx]}</div>
+                                                <div className="inline-block text-sm font-mono font-semibold mt-1 px-2 py-0.5 rounded-full" style={{ color: 'var(--ink)', background: 'rgba(32,38,31,0.08)' }}>{day.display}</div>
+                                                {!day.valid && <div className={isSnapshotMode ? "text-xs font-semibold mt-1" : "text-xs font-semibold mt-1 truncate"} style={{ color: 'var(--brick)' }}>Sistem dışı</div>}
+                                                {day.valid && headerHoliday && <div className={isSnapshotMode ? "text-xs font-semibold mt-1 px-1" : "text-xs font-semibold mt-1 truncate px-1"} style={{ color: '#7A5A1E' }} title={headerHoliday.name}>{headerHoliday.name}</div>}
+                                            </div>
+                                        );
+                                    })}
+
+                                    {/* Ders satırları */}
+                                    {(activeBlock === 'SABAH' ? MORNING_LESSONS : AFTERNOON_LESSONS).map((lesson, idx) => (
+                                        <React.Fragment key={`l-${idx}`}>
+                                            <div className="sticky left-0 z-10 p-3 text-base font-semibold flex items-center justify-center" style={{ background: 'var(--teal-tint)', color: 'var(--teal-dark)', minHeight: isSnapshotMode ? undefined : '4rem', paddingTop: isSnapshotMode ? '1.25rem' : undefined, paddingBottom: isSnapshotMode ? '1.25rem' : undefined }}>{lesson.label}</div>
+                                            <div className="sticky left-[120px] z-10 p-3 text-sm font-mono font-semibold flex items-center justify-center" style={{ background: 'var(--paper-2)', color: 'var(--ink)', minHeight: isSnapshotMode ? undefined : '4rem', paddingTop: isSnapshotMode ? '1.25rem' : undefined, paddingBottom: isSnapshotMode ? '1.25rem' : undefined }}>{lesson.start}–{lesson.end}</div>
+                                            {weekDays.map(day => {
+                                                const b = findBooking(day, lesson);
+                                                const t = findTalep(day, lesson);
+                                                const holiday = pickHolidayForBlock(day.dayHolidays, lesson.block);
+                                                const clickable = day.valid;
+                                                const bg = !day.valid ? 'var(--paper-2)' : b ? 'var(--ochre-tint)' : t ? 'var(--teal-tint)' : holiday ? 'var(--brick-tint)' : 'var(--panel)';
+                                                return (
+                                                    <div key={`${day.dateStr}-${lesson.label}`} onClick={() => clickable && setEditingCell({ ...day, lesson, valid: day.valid, holiday })} className="p-2 cell-tap flex items-center justify-center" style={{ background: bg, cursor: day.valid ? 'pointer' : 'not-allowed', opacity: day.valid ? 1 : 0.5, minHeight: isSnapshotMode ? undefined : '4rem', paddingTop: isSnapshotMode ? '1.25rem' : undefined, paddingBottom: isSnapshotMode ? '1.25rem' : undefined }}>
+                                                        {b ? (
+                                                            <div>
+                                                                <div className={isSnapshotMode ? "text-base font-semibold leading-snug" : "text-base font-semibold leading-snug truncate"} style={{ color: 'var(--ink)' }} title={trUpper(b.teacher)}>{trUpper(b.teacher)}</div>
+                                                                <div className={isSnapshotMode ? "text-sm font-medium mt-1 leading-snug" : "text-sm font-medium mt-1 leading-snug truncate"} style={{ color: 'var(--ink-soft)' }} title={trUpper(b.activity)}>{trUpper(b.activity)}</div>
+                                                            </div>
+                                                        ) : t ? (
+                                                            <div className="flex items-center justify-center px-1">
+                                                                <span className={isSnapshotMode ? "text-xs font-semibold" : "text-xs font-semibold truncate"} style={{ color: 'var(--teal-dark)' }}>Beklemede</span>
+                                                            </div>
+                                                        ) : day.valid && holiday ? (
+                                                            <div className="flex items-center justify-center px-1">
+                                                                <span className={isSnapshotMode ? "text-xs font-semibold" : "text-xs font-semibold truncate"} style={{ color: 'var(--brick)' }} title={holiday.name}>{holiday.name}</span>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="flex items-center justify-center"><span className="text-sm font-medium" style={{ color: day.valid ? 'var(--ink-soft)' : 'transparent' }}>{day.valid ? 'Müsait' : ''}</span></div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </React.Fragment>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Mobil görünüm: tüm haftayı tek ekranda gösteren renkli ızgara */}
+                            <div className={(isSnapshotMode ? "hidden" : "flex flex-col md:hidden") + " mobile-schedule-view"}>
+                                <div className="mobile-week-grid grid gap-1 p-2" style={{ gridTemplateColumns: '38px repeat(5, 1fr)', gridTemplateRows: 'auto repeat(6, 1fr)' }}>
+                                    <div></div>
+                                    {weekDays.map((day, idx) => {
+                                        const stripHoliday = pickHolidayForBlock(day.dayHolidays, activeBlock);
+                                        return (
+                                            <div key={day.dateStr} className="text-center rounded-lg py-1" style={!day.valid ? { background: 'var(--paper-2)', color: 'var(--ink-soft)', opacity: 0.5 } : stripHoliday ? { background: 'var(--ochre-tint)', color: '#7A5A1E' } : { background: 'var(--paper-2)', color: 'var(--ink)' }}>
+                                                <div className="text-[11px] font-semibold">{DAY_SHORT[idx]}</div>
+                                                <div className="text-[9px] font-mono opacity-80">{day.display}</div>
+                                            </div>
+                                        );
+                                    })}
+                                    {(activeBlock === 'SABAH' ? MORNING_LESSONS : AFTERNOON_LESSONS).map((lesson) => (
+                                        <React.Fragment key={lesson.label}>
+                                            <div className="flex flex-col items-center justify-center text-center" style={{ color: 'var(--ink-soft)' }}>
+                                                <div className="text-[9px] font-semibold leading-none">{lesson.label.replace('. Ders', '')}</div>
+                                                <div className="text-[9px] font-mono leading-none mt-0.5">{lesson.start}</div>
+                                            </div>
+                                            {weekDays.map(day => {
+                                                const b = findBooking(day, lesson);
+                                                const t = findTalep(day, lesson);
+                                                const holiday = pickHolidayForBlock(day.dayHolidays, lesson.block);
+                                                const clickable = day.valid;
+                                                const bg = !day.valid ? 'var(--paper-2)' : b ? 'var(--brick-tint)' : t ? 'var(--teal-tint)' : holiday ? 'var(--ochre-tint)' : 'var(--green-tint)';
+                                                const bd = !day.valid ? 'var(--line)' : b ? 'var(--brick)' : t ? 'var(--teal-dark)' : holiday ? 'var(--ochre)' : 'var(--green)';
+                                                const txt = !day.valid ? 'var(--ink-soft)' : b ? 'var(--brick)' : t ? 'var(--teal-dark)' : holiday ? '#7A5A1E' : 'var(--green)';
+                                                return (
+                                                    <div key={`${day.dateStr}-${lesson.label}`} onClick={() => clickable && setEditingCell({ ...day, lesson, valid: day.valid, holiday })} className="mobile-week-cell rounded-lg border cell-tap flex items-center justify-center overflow-hidden px-0.5" style={{ background: bg, borderColor: bd, opacity: day.valid ? 1 : 0.5 }}>
+                                                        {b ? (
+                                                            <span className="text-[9px] font-semibold leading-tight truncate" style={{ color: txt }}>{trUpper(b.teacher)}</span>
+                                                        ) : t ? (
+                                                            <Icon name="bell" className="w-3 h-3" style={{ color: txt }} />
+                                                        ) : holiday ? (
+                                                            <Icon name="info" className="w-3 h-3" style={{ color: txt }} />
+                                                        ) : day.valid ? (
+                                                            <Icon name="plus" className="w-3.5 h-3.5" style={{ color: txt }} />
+                                                        ) : null}
+                                                    </div>
+                                                );
+                                            })}
+                                        </React.Fragment>
+                                    ))}
+                                </div>
+                                <div className="no-snapshot flex items-center justify-center gap-4 pb-1 shrink-0">
+                                    <span className="inline-flex items-center gap-1.5 text-[10px] font-medium" style={{ color: 'var(--ink-soft)' }}><span className="w-2.5 h-2.5 rounded-sm" style={{ background: 'var(--green-tint)', border: '1px solid var(--green)' }}></span>Boş</span>
+                                    <span className="inline-flex items-center gap-1.5 text-[10px] font-medium" style={{ color: 'var(--ink-soft)' }}><span className="w-2.5 h-2.5 rounded-sm" style={{ background: 'var(--teal-tint)', border: '1px solid var(--teal-dark)' }}></span>Beklemede</span>
+                                    <span className="inline-flex items-center gap-1.5 text-[10px] font-medium" style={{ color: 'var(--ink-soft)' }}><span className="w-2.5 h-2.5 rounded-sm" style={{ background: 'var(--brick-tint)', border: '1px solid var(--brick)' }}></span>Dolu</span>
+                                    <span className="inline-flex items-center gap-1.5 text-[10px] font-medium" style={{ color: 'var(--ink-soft)' }}><span className="w-2.5 h-2.5 rounded-sm" style={{ background: 'var(--ochre-tint)', border: '1px solid var(--ochre)' }}></span>Tatil</span>
+                                </div>
+                            </div>
+                        </div>
+                    </main>
+
+                    {/* ============ MOBİL ALT AKSİYON ÇUBUĞU ============ */}
+                    <div className="no-snapshot md:hidden fixed bottom-0 left-0 right-0 z-30 safe-b px-3 pt-2" style={{ background: 'rgba(242,241,231,0.95)', backdropFilter: 'blur(10px)', borderTop: '1px solid var(--line)' }}>
+                        {showDateJump ? (
+                            <div className="flex gap-2 max-w-6xl mx-auto">
+                                <input type="date" autoFocus min={toDateStrLocal(SISTEM_BASLANGIC)} max={toDateStrLocal(SISTEM_BITIS)} defaultValue={toDateStrLocal(currentDate)} onChange={(e) => jumpToDate(e.target.value)} className="flex-1 py-3 rounded-xl text-sm font-semibold border text-center" style={{ borderColor: 'var(--line)', color: 'var(--ink)', background: 'var(--panel)' }} />
+                                <button onClick={() => setShowDateJump(false)} className="px-5 py-3 rounded-xl text-sm font-semibold border" style={{ borderColor: 'var(--line)', color: 'var(--ink)', background: 'var(--panel)' }}>Vazgeç</button>
+                            </div>
+                        ) : (
+                            <div className="flex gap-2 max-w-6xl mx-auto">
+                                <button onClick={goToday} className="flex-1 py-3 rounded-xl text-sm font-semibold border" style={{ borderColor: 'var(--line)', color: 'var(--ink)', background: 'var(--panel)' }}>Bugüne git</button>
+                                <button onClick={() => setShowDateJump(true)} className="flex-1 py-3 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2" style={{ background: 'var(--teal-dark)' }}>
+                                    <Icon name="search" className="w-4 h-4" /> Tarihe göre ara
+                                </button>
+                            </div>
+                        )}
                     </div>
-                `).join('')}
-                <div class="btn-row"><button class="btn ghost" data-action="taleplerim-kapat">Kapat</button></div>
-            </div>
-        </div>`;
-    }
 
-    app.innerHTML = html;
-}
+                    {/* ============ HÜCRE DÜZENLEME MODALI ============ */}
+                    {editingCell && (
+                        <div onClick={(e) => { if (e.target === e.currentTarget) setEditingCell(null); }} className="no-snapshot fixed inset-0 z-[700] flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: 'rgba(32,38,31,0.55)', backdropFilter: 'blur(6px)' }}>
+                            <div className="w-full max-w-md rounded-t-3xl sm:rounded-3xl overflow-y-auto max-h-[92vh] p-6 sm:p-8" style={{ background: 'var(--panel)' }}>
+                                {currentBooking ? (
+                                    <div>
+                                        <div className="flex justify-between items-center mb-6">
+                                            <h3 className="font-display font-semibold text-xl">Kayıt bilgisi</h3>
+                                            <button onClick={() => setEditingCell(null)} className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: 'var(--paper-2)' }}>
+                                                <Icon name="x" className="w-5 h-5" />
+                                            </button>
+                                        </div>
+                                        <div className="p-5 rounded-2xl space-y-4" style={{ background: 'var(--ochre-tint)' }}>
+                                            <div><div className="text-[11px] font-semibold" style={{ color: '#7A5A1E' }}>Öğretmen</div><div className="text-xl font-semibold mt-0.5" style={{ color: 'var(--ink)' }}>{currentBooking.teacher ? trUpper(currentBooking.teacher) : "Bilinmiyor"}</div></div>
+                                            <div><div className="text-[11px] font-semibold" style={{ color: '#7A5A1E' }}>Etkinlik</div><div className="text-xl font-semibold mt-0.5" style={{ color: 'var(--ink)' }}>{currentBooking.activity ? trUpper(currentBooking.activity) : "Belirtilmedi"}</div></div>
+                                        </div>
+                                        <button onClick={() => setEditingCell(null)} className="w-full mt-3 py-3.5 text-white font-semibold rounded-2xl" style={{ background: 'var(--ink)' }}>Kapat</button>
+                                    </div>
+                                ) : currentTalep ? (
+                                    <div className="text-center py-6">
+                                        <div className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-5" style={{ background: 'var(--ochre-tint)' }}>
+                                            <Icon name="bell" className="w-10 h-10" style={{ color: 'var(--ochre)' }} />
+                                        </div>
+                                        <h3 className="font-display font-semibold text-2xl">Bu saat beklemede</h3>
+                                        <p className="text-sm font-medium mt-2" style={{ color: 'var(--ink-soft)' }}>
+                                            <span className="font-semibold">{trUpper(currentTalep.teacher)}</span> tarafından gönderilen bir talep, yönetici onayını bekliyor. Onaylanana kadar bu saat için yeni talep gönderemezsiniz.
+                                        </p>
+                                        <button onClick={() => setEditingCell(null)} className="w-full mt-6 py-4 text-white font-semibold rounded-2xl" style={{ background: 'var(--ink)' }}>Kapat</button>
+                                    </div>
+                                ) : editingCell?.holiday ? (
+                                    <div className="text-center py-6">
+                                        <div className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-5" style={{ background: 'var(--ochre-tint)' }}>
+                                            <Icon name="calendar" className="w-10 h-10" style={{ color: 'var(--ochre)' }} />
+                                        </div>
+                                        <h3 className="font-display font-semibold text-2xl" style={{ color: 'var(--brick)' }}>{editingCell.holiday.name}</h3>
+                                        <p className="text-sm font-medium mt-2" style={{ color: 'var(--ink-soft)' }}>Bu saatte {editingCell.holiday.block === 'TAM' ? 'tüm gün' : editingCell.holiday.block === 'SABAH' ? 'sadece sabah' : 'sadece öğle'} resmi tatil nedeniyle rezervasyon alınmıyor.</p>
+                                        <button onClick={() => setEditingCell(null)} className="w-full mt-6 py-4 text-white font-semibold rounded-2xl" style={{ background: 'var(--ink)' }}>Kapat</button>
+                                    </div>
+                                ) : (
+                                    <div>
+                                        <div className="flex justify-between items-start mb-5">
+                                            <div>
+                                                <h3 className="font-display font-semibold text-xl">Rezervasyon Talebi</h3>
+                                                <p className="text-xs font-medium mt-0.5" style={{ color: 'var(--ink-soft)' }}>{activeLocation} · {editingCell?.fullName} · {editingCell?.display}</p>
+                                            </div>
+                                            <button onClick={() => setEditingCell(null)} className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: 'var(--paper-2)' }}>
+                                                <Icon name="x" className="w-5 h-5" />
+                                            </button>
+                                        </div>
+                                        <form onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.target); talepGonder(f.get('teacher'), f.get('activity')); }} className="space-y-4">
+                                            <div className="p-4 rounded-2xl flex items-center justify-between font-semibold text-white text-sm" style={{ background: 'var(--teal-dark)' }}>
+                                                <span>{editingCell?.lesson?.label}</span>
+                                                <span className="font-mono px-3 py-1 rounded-lg" style={{ background: 'rgba(255,255,255,0.15)' }}>{editingCell?.lesson?.start}–{editingCell?.lesson?.end}</span>
+                                            </div>
+                                            {talepGonderHata && (
+                                                <div className="p-3 rounded-xl text-xs font-semibold" style={{ background: 'var(--brick-tint)', color: 'var(--brick)' }}>{talepGonderHata}</div>
+                                            )}
+                                            <div className="space-y-3">
+                                                <div>
+                                                    <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--ink-soft)' }}>Ad Soyad</label>
+                                                    <input name="teacher" autoFocus required defaultValue={localStorage.getItem('rz_talep_isim') || ''} placeholder="Adınız ve soyadınız" className="w-full px-5 py-4 rounded-2xl font-semibold text-lg outline-none border-2" style={{ borderColor: 'var(--line)', background: 'var(--paper)' }} />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--ink-soft)' }}>Ne için kullanacaksınız? (opsiyonel)</label>
+                                                    <input name="activity" placeholder="Örn: Veli toplantısı" className="w-full px-5 py-4 rounded-2xl font-semibold text-lg outline-none border-2" style={{ borderColor: 'var(--line)', background: 'var(--paper)' }} />
+                                                </div>
+                                            </div>
+                                            <button type="submit" disabled={talepGonderiliyor} className="w-full py-4 text-white font-semibold rounded-2xl" style={{ background: 'var(--teal)' }}>{talepGonderiliyor ? 'Gönderiliyor…' : 'Talebi gönder'}</button>
+                                        </form>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
 
-document.getElementById('app').addEventListener('click', e => {
-    // Arka plana (overlay'in kendisine, içindeki bir şeye değil) tıklanınca
-    // hangi panel açıksa onu kapat. İçerideki input/textarea/buton tıklamaları
-    // bu bloğu hiç görmez (e.target overlay olmadığı için).
-    if (e.target.classList.contains('overlay')) {
-        if (state.modalSlot) modalKapat();
-        else if (state.taleplerimAcik) { state.taleplerimAcik = false; render(); }
-        return;
-    }
-    const el = e.target.closest('[data-action]');
-    if (!el) return;
-    const action = el.dataset.action;
-    if (action === 'mekan') { state.aktifMekan = el.dataset.mekan; render(); }
-    else if (action === 'prev-week') haftaGeriGit();
-    else if (action === 'next-week') haftaIleriGit();
-    else if (action === 'slot-ac') {
-        const dateStr = el.dataset.date, block = el.dataset.block, label = el.dataset.label;
-        const ders = (block === 'SABAH' ? (state.ayarlar.lessonTimes?.morning || DEFAULT_MORNING_LESSONS) : (state.ayarlar.lessonTimes?.afternoon || DEFAULT_AFTERNOON_LESSONS)).find(x => x.label === label);
-        const idx = gunIndexFromDateStr(dateStr);
-        slotAc(state.aktifMekan, dateStr, formatDateStrDisplay(dateStr), idx >= 0 ? DAY_LABELS[idx] : '', block, label, ders ? `${ders.start}–${ders.end}` : '');
-    }
-    else if (action === 'overlay-kapat') modalKapat();
-    else if (action === 'talep-gonder') {
-        const isim = document.getElementById('inpIsim').value;
-        const aktivite = document.getElementById('inpAktivite').value;
-        talepGonder(isim, aktivite);
-    }
-    else if (action === 'taleplerim-ac') { state.taleplerimAcik = true; render(); }
-    else if (action === 'taleplerim-kapat') { state.taleplerimAcik = false; render(); }
-});
-
-function gunIndexFromDateStr(dateStr) {
-    const gunler = Array.from({ length: 5 }, (_, i) => { const d = new Date(state.haftaBaslangic); d.setDate(d.getDate() + i); return toDateStrLocal(d); });
-    return gunler.indexOf(dateStr);
-}
-
-baslat();
-</script>
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
 </body>
 </html>
