@@ -374,6 +374,7 @@
                 days: [], periods: []
             });
             const [bulkResult, setBulkResult] = useState('');
+            const [toastMsg, setToastMsg] = useState('');
 
             // Buluta bağlan: önce sessizce anonim giriş yapılır (güvenlik kuralları
             // "auth != null" istiyor), giriş tamamlanınca ayarlar ve onaylı
@@ -538,11 +539,36 @@
                 });
             };
 
+            // Öğretmen kendi (birikmiş) talebini listesinden siler — talep bulutta
+            // da tamamen kaldırılır (bekliyor durumundaysa admin panelinden de kalkar).
+            const benimTalebimiSil = (t) => {
+                if (!window.confirm('Bu talebi silmek istediğinize emin misiniz?')) return;
+                if (fbDbRef.current) {
+                    fbDbRef.current.ref(`${RZ_TALEPLER_PATH}/${t.key}`).remove().catch(err => console.error('Talep silinemedi:', err));
+                }
+                const yeniAnahtarlar = benimTalepAnahtarlari.filter(k => k !== t.key);
+                setBenimTalepAnahtarlari(yeniAnahtarlar);
+                localStorage.setItem('rz_talep_anahtarlarim', JSON.stringify(yeniAnahtarlar));
+                setGorulenDurumlar(prev => {
+                    if (!(t.key in prev)) return prev;
+                    const next = { ...prev };
+                    delete next[t.key];
+                    try { localStorage.setItem('rz_talep_gorulen', JSON.stringify(next)); } catch (e) {}
+                    return next;
+                });
+            };
+
             useEffect(() => {
                 if (!bulkResult) return;
                 const t = setTimeout(() => setBulkResult(''), 3000);
                 return () => clearTimeout(t);
             }, [bulkResult]);
+
+            useEffect(() => {
+                if (!toastMsg) return;
+                const t = setTimeout(() => setToastMsg(''), 2200);
+                return () => clearTimeout(t);
+            }, [toastMsg]);
 
             // Herhangi bir pencere açıkken arka plan sayfasının kaymasını tamamen engelle
             useEffect(() => {
@@ -662,6 +688,17 @@
                 commitBookings(bookings.filter(b => b.id !== id));
             };
 
+            // Bir rezervasyon kaydı silinirken, o saate ait onaylanmış bir talep
+            // varsa (öğretmen bu üzerinden talep göndermişti) durumunu "iptal
+            // edildi" olarak işaretler — öğretmenin Taleplerim'inde bildirim çıkar.
+            const iptalEtIliskiliTalep = (booking) => {
+                if (!booking || !fbDbRef.current) return;
+                const iliskili = taleplerListesi.find(t => t.durum === 'onaylandi' && t.location === booking.location && t.date === booking.date && t.block === booking.block && t.lessonLabel === booking.lessonLabel);
+                if (!iliskili) return;
+                fbDbRef.current.ref(`${RZ_TALEPLER_PATH}/${iliskili.key}`).update({ durum: 'iptal_edildi', cevapZamani: Date.now() })
+                    .catch(err => console.error('Talep güncellenemedi:', err));
+            };
+
             const handleSaveBooking = (e) => {
                 e.preventDefault();
                 if (!editingCell || role !== 'admin' || !editingCell.valid) return;
@@ -679,20 +716,22 @@
                 if (!editingCell) return;
                 const b = findBooking(editingCell, editingCell.lesson);
                 if (!b) return;
+                iptalEtIliskiliTalep(b);
                 removeBookingById(b.id);
                 setEditingCell(null);
             };
 
-            const handleSaveSettings = (partial) => {
+            const handleSaveSettings = (partial, mesaj) => {
                 if (role !== 'admin') return;
                 commitSettings({ ...settings, ...partial });
+                if (mesaj) setToastMsg(mesaj);
             };
 
             const handleLogoChange = (e) => {
                 const file = e.target.files && e.target.files[0];
                 if (!file) return;
                 const reader = new FileReader();
-                reader.onload = () => handleSaveSettings({ logoDataUrl: reader.result });
+                reader.onload = () => handleSaveSettings({ logoDataUrl: reader.result }, 'Logo güncellendi');
                 reader.readAsDataURL(file);
                 e.target.value = '';
             };
@@ -700,13 +739,13 @@
             const handleAddLocation = () => {
                 const name = newLocationInput.trim();
                 if (!name || settings.locations.includes(name)) return;
-                handleSaveSettings({ locations: [...settings.locations, name] });
+                handleSaveSettings({ locations: [...settings.locations, name] }, 'Mekan eklendi');
                 setNewLocationInput('');
             };
 
             const handleRemoveLocation = (loc) => {
                 const remaining = settings.locations.filter(l => l !== loc);
-                handleSaveSettings({ locations: remaining.length ? remaining : DEFAULT_LOCATIONS });
+                handleSaveSettings({ locations: remaining.length ? remaining : DEFAULT_LOCATIONS }, 'Mekan kaldırıldı');
             };
 
             const handleAddHoliday = () => {
@@ -714,12 +753,12 @@
                 if (!date || !name.trim()) return;
                 const list = settings.holidays || [];
                 const filtered = list.filter(h => !(h.date === date && h.block === block));
-                handleSaveSettings({ holidays: [...filtered, { date, name: name.trim(), block }].sort((a, b) => a.date < b.date ? -1 : 1) });
+                handleSaveSettings({ holidays: [...filtered, { date, name: name.trim(), block }].sort((a, b) => a.date < b.date ? -1 : 1) }, 'Tatil eklendi');
                 setNewHolidayForm({ date: '', name: '', block: 'TAM' });
             };
 
             const handleRemoveHoliday = (date, block) => {
-                handleSaveSettings({ holidays: (settings.holidays || []).filter(h => !(h.date === date && h.block === block)) });
+                handleSaveSettings({ holidays: (settings.holidays || []).filter(h => !(h.date === date && h.block === block)) }, 'Tatil kaldırıldı');
             };
 
             const handleSaveLessonTimes = (blockKey, index, field, value) => {
@@ -812,6 +851,7 @@
             }, [bookings]);
 
             const handleDeleteGroup = (key) => {
+                bookings.filter(b => `${b.location}|${b.teacher}|${b.activity}` === key).forEach(iptalEtIliskiliTalep);
                 commitBookings(bookings.filter(b => `${b.location}|${b.teacher}|${b.activity}` !== key));
                 if (editingGroupKey === key) setEditingGroupKey(null);
             };
@@ -1014,6 +1054,13 @@
                         </div>
                     </header>
 
+                    {/* ============ BİLDİRİM (TOAST) ============ */}
+                    {toastMsg && (
+                        <div className="no-snapshot fixed top-4 left-1/2 z-[999] px-5 py-3 rounded-2xl text-white font-semibold text-sm shadow-lg" style={{ background: 'var(--ink)', transform: 'translateX(-50%)' }}>
+                            {toastMsg}
+                        </div>
+                    )}
+
                     {/* ============ TALEPLERİM BALONCUĞU (öğretmen modu) ============ */}
                     {role !== 'admin' && (
                         <button onClick={taleplerimAc} className="no-snapshot fixed z-40 right-4 md:right-6 bottom-20 md:bottom-6 flex items-center gap-2 pl-4 pr-5 py-3.5 rounded-full text-white font-semibold text-sm" style={{ background: 'var(--teal-dark)', boxShadow: '0 6px 18px rgba(20,25,40,.28)' }}>
@@ -1141,11 +1188,15 @@
                                                 <span className="shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold" style={
                                                     t.durum === 'onaylandi' ? { background: 'var(--green-tint)', color: 'var(--green)' } :
                                                     t.durum === 'reddedildi' ? { background: 'var(--brick-tint)', color: 'var(--brick)' } :
+                                                    t.durum === 'iptal_edildi' ? { background: 'var(--paper-2)', color: 'var(--ink-soft)' } :
                                                     { background: 'var(--ochre-tint)', color: 'var(--ochre)' }
                                                 }>
-                                                    {t.durum === 'onaylandi' ? 'Onaylandı' : t.durum === 'reddedildi' ? 'Reddedildi' : 'Onay bekliyor'}
+                                                    {t.durum === 'onaylandi' ? 'Onaylandı' : t.durum === 'reddedildi' ? 'Reddedildi' : t.durum === 'iptal_edildi' ? 'Yönetici iptal etti' : 'Onay bekliyor'}
                                                 </span>
                                             </div>
+                                            <button onClick={() => benimTalebimiSil(t)} className="mt-2.5 flex items-center gap-1.5 text-xs font-semibold" style={{ color: 'var(--brick)' }}>
+                                                <Icon name="trash" className="w-3.5 h-3.5" /> Sil
+                                            </button>
                                         </div>
                                     ))}
                                 </div>
@@ -1185,7 +1236,7 @@
                                 <div className="flex flex-col sm:flex-row flex-1 min-h-0">
                                     {/* Mobil: yatay sekme şeridi */}
                                     <div className="flex sm:hidden gap-1 px-4 pt-3 pb-1 border-b overflow-x-auto scrollbar-hide shrink-0" style={{ borderColor: 'var(--line)' }}>
-                                        {[['okul', 'Okul bilgileri'], ['saatler', 'Ders Saatleri'], ['mekan', 'Mekanlar'], ['tatiller', 'Resmi Tatiller'], ['sifre', 'Şifre'], ['toplu', 'Toplu oluştur'], ['kurslar', 'Kurslar'], ['yedek', 'Yedekleme']].map(([key, label]) => (
+                                        {[['okul', 'Okul bilgileri'], ['saatler', 'Ders Saatleri'], ['mekan', 'Mekanlar'], ['tatiller', 'Resmi Tatiller'], ['toplu', 'Toplu oluştur'], ['kurslar', 'Kurslar'], ['yedek', 'Yedekleme']].map(([key, label]) => (
                                             <button key={key} onClick={() => setSettingsTab(key)} className="px-4 py-2.5 text-base font-semibold rounded-lg whitespace-nowrap" style={settingsTab === key ? { background: 'var(--teal-tint)', color: 'var(--teal-dark)' } : { color: 'var(--ink-soft)' }}>
                                                 {label}
                                             </button>
@@ -1194,7 +1245,7 @@
 
                                     {/* Masaüstü: dikey yan sekme rayı — ayarları yatay yayar */}
                                     <div className="hidden sm:flex flex-col w-52 shrink-0 border-r p-3 gap-1" style={{ borderColor: 'var(--line)', background: 'var(--paper-2)' }}>
-                                        {[['okul', 'Okul bilgileri'], ['saatler', 'Ders Saatleri'], ['mekan', 'Mekanlar'], ['tatiller', 'Resmi Tatiller'], ['sifre', 'Şifre'], ['toplu', 'Toplu oluştur'], ['kurslar', 'Kurslar'], ['yedek', 'Yedekleme']].map(([key, label]) => (
+                                        {[['okul', 'Okul bilgileri'], ['saatler', 'Ders Saatleri'], ['mekan', 'Mekanlar'], ['tatiller', 'Resmi Tatiller'], ['toplu', 'Toplu oluştur'], ['kurslar', 'Kurslar'], ['yedek', 'Yedekleme']].map(([key, label]) => (
                                             <button key={key} onClick={() => setSettingsTab(key)} className="text-left px-4 py-3 rounded-xl text-base font-semibold transition-colors" style={settingsTab === key ? { background: 'var(--panel)', color: 'var(--teal-dark)', boxShadow: '0 1px 2px rgba(32,38,31,0.1)' } : { color: 'var(--ink-soft)' }}>
                                                 {label}
                                             </button>
@@ -1203,35 +1254,46 @@
 
                                     <div className="flex-1 min-h-0 p-4 sm:p-8 overflow-y-auto">
                                         {settingsTab === 'okul' && (
-                                            <form onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.target); handleSaveSettings({ schoolName: f.get('schoolName') || SISTEM_ADI, schoolSubtitle: f.get('schoolSubtitle') || '' }); }} className="max-w-2xl">
-                                                <p className="text-sm font-medium mb-5" style={{ color: 'var(--ink-soft)' }}>Üst çubukta görünen okul logosunu, adını ve alt başlığı düzenleyin.</p>
-                                                <div className="grid sm:grid-cols-[auto,1fr] gap-6 items-start">
-                                                    <div className="flex flex-col items-center gap-2">
-                                                        <div className="w-20 h-20 rounded-2xl flex items-center justify-center overflow-hidden font-display font-bold text-3xl border" style={{ color: 'var(--teal-dark)', borderColor: 'var(--line)' }}>
-                                                            {settings.logoDataUrl ? <img src={settings.logoDataUrl} alt="Okul logosu" className="w-full h-full object-contain" /> : (settings.schoolName || SISTEM_ADI).charAt(0)}
+                                            <div className="max-w-2xl space-y-8">
+                                                <form onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.target); handleSaveSettings({ schoolName: f.get('schoolName') || SISTEM_ADI, schoolSubtitle: f.get('schoolSubtitle') || '' }, 'Okul bilgileri güncellendi'); }}>
+                                                    <p className="text-sm font-medium mb-5" style={{ color: 'var(--ink-soft)' }}>Üst çubukta görünen okul logosunu, adını ve alt başlığı düzenleyin.</p>
+                                                    <div className="grid sm:grid-cols-[auto,1fr] gap-6 items-start">
+                                                        <div className="flex flex-col items-center gap-2">
+                                                            <div className="w-20 h-20 rounded-2xl flex items-center justify-center overflow-hidden font-display font-bold text-3xl border" style={{ color: 'var(--teal-dark)', borderColor: 'var(--line)' }}>
+                                                                {settings.logoDataUrl ? <img src={settings.logoDataUrl} alt="Okul logosu" className="w-full h-full object-contain" /> : (settings.schoolName || SISTEM_ADI).charAt(0)}
+                                                            </div>
+                                                            <label className="px-3 py-2 rounded-lg text-sm font-semibold cursor-pointer" style={{ background: 'var(--paper-2)', color: 'var(--ink)' }}>
+                                                                Logo yükle
+                                                                <input type="file" accept="image/*" onChange={handleLogoChange} className="hidden" />
+                                                            </label>
+                                                            {settings.logoDataUrl && (
+                                                                <button type="button" onClick={() => handleSaveSettings({ logoDataUrl: '' }, 'Logo kaldırıldı')} className="text-xs font-semibold" style={{ color: 'var(--brick)' }}>Logoyu kaldır</button>
+                                                            )}
                                                         </div>
-                                                        <label className="px-3 py-2 rounded-lg text-sm font-semibold cursor-pointer" style={{ background: 'var(--paper-2)', color: 'var(--ink)' }}>
-                                                            Logo yükle
-                                                            <input type="file" accept="image/*" onChange={handleLogoChange} className="hidden" />
-                                                        </label>
-                                                        {settings.logoDataUrl && (
-                                                            <button type="button" onClick={() => handleSaveSettings({ logoDataUrl: '' })} className="text-xs font-semibold" style={{ color: 'var(--brick)' }}>Logoyu kaldır</button>
-                                                        )}
+                                                        <div className="space-y-4 w-full">
+                                                            <div>
+                                                                <label className="block text-sm font-semibold mb-1" style={{ color: 'var(--ink-soft)' }}>Okul / sistem adı</label>
+                                                                <input name="schoolName" defaultValue={settings.schoolName} placeholder={SISTEM_ADI} className="w-full px-4 py-3 rounded-xl text-sm font-semibold outline-none border-2" style={{ borderColor: 'var(--line)', background: 'var(--paper)' }} />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-sm font-semibold mb-1" style={{ color: 'var(--ink-soft)' }}>Alt başlık</label>
+                                                                <input name="schoolSubtitle" defaultValue={settings.schoolSubtitle} placeholder="Örn: Karabağlar / İzmir" className="w-full px-4 py-3 rounded-xl text-base outline-none border-2" style={{ borderColor: 'var(--line)', background: 'var(--paper)' }} />
+                                                                <p className="text-xs font-medium mt-1.5" style={{ color: 'var(--ink-soft)' }}>Üst çubukta okul adının altında görünür.</p>
+                                                            </div>
+                                                            <button type="submit" className="px-6 py-3 rounded-xl text-white font-semibold text-sm shadow-sm" style={{ background: 'var(--teal)' }}>Kaydet</button>
+                                                        </div>
                                                     </div>
-                                                    <div className="space-y-4 w-full">
-                                                        <div>
-                                                            <label className="block text-sm font-semibold mb-1" style={{ color: 'var(--ink-soft)' }}>Okul / sistem adı</label>
-                                                            <input name="schoolName" defaultValue={settings.schoolName} placeholder={SISTEM_ADI} className="w-full px-4 py-3 rounded-xl text-sm font-semibold outline-none border-2" style={{ borderColor: 'var(--line)', background: 'var(--paper)' }} />
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-sm font-semibold mb-1" style={{ color: 'var(--ink-soft)' }}>Alt başlık</label>
-                                                            <input name="schoolSubtitle" defaultValue={settings.schoolSubtitle} placeholder="Örn: Karabağlar / İzmir" className="w-full px-4 py-3 rounded-xl text-base outline-none border-2" style={{ borderColor: 'var(--line)', background: 'var(--paper)' }} />
-                                                            <p className="text-xs font-medium mt-1.5" style={{ color: 'var(--ink-soft)' }}>Üst çubukta okul adının altında görünür.</p>
-                                                        </div>
-                                                        <button type="submit" className="px-6 py-3 rounded-xl text-white font-semibold text-sm shadow-sm" style={{ background: 'var(--teal)' }}>Kaydet</button>
-                                                    </div>
+                                                </form>
+
+                                                <div className="pt-6 border-t" style={{ borderColor: 'var(--line)' }}>
+                                                    <p className="text-sm font-semibold mb-1" style={{ color: 'var(--ink)' }}>Yönetici şifresi</p>
+                                                    <p className="text-xs font-medium mb-3" style={{ color: 'var(--ink-soft)' }}>Yönetici girişi için kullanılan şifreyi değiştirin.</p>
+                                                    <form onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.target); handleSaveSettings({ adminPassword: f.get('adminPassword') || settings.adminPassword }, 'Şifre güncellendi'); }} className="flex gap-2 max-w-md">
+                                                        <input name="adminPassword" defaultValue={settings.adminPassword} className="flex-1 px-4 py-3 rounded-xl font-mono text-base outline-none border-2" style={{ borderColor: 'var(--line)', background: 'var(--paper)' }} />
+                                                        <button type="submit" className="px-5 py-3 rounded-xl text-white font-semibold text-base shadow-sm" style={{ background: 'var(--teal)' }}>Kaydet</button>
+                                                    </form>
                                                 </div>
-                                            </form>
+                                            </div>
                                         )}
 
                                         {settingsTab === 'saatler' && (
@@ -1327,16 +1389,6 @@
                                                         ))}
                                                     </div>
                                                 )}
-                                            </div>
-                                        )}
-
-                                        {settingsTab === 'sifre' && (
-                                            <div className="max-w-md">
-                                                <p className="text-sm font-medium mb-3" style={{ color: 'var(--ink-soft)' }}>Yönetici girişi için kullanılan şifreyi değiştirin.</p>
-                                                <form onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.target); handleSaveSettings({ adminPassword: f.get('adminPassword') || settings.adminPassword }); }} className="flex gap-2">
-                                                    <input name="adminPassword" defaultValue={settings.adminPassword} className="flex-1 px-4 py-3 rounded-xl font-mono text-base outline-none border-2" style={{ borderColor: 'var(--line)', background: 'var(--paper)' }} />
-                                                    <button type="submit" className="px-5 py-3 rounded-xl text-white font-semibold text-base shadow-sm" style={{ background: 'var(--teal)' }}>Kaydet</button>
-                                                </form>
                                             </div>
                                         )}
 
