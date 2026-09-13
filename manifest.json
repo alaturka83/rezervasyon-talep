@@ -1,6 +1,6 @@
 {
   "name": "Rezervasyon Talebi",
-  "short_name": "Rez. Talep",
+  "short_name": "Rezervasyon",
   "description": "Ortak alanlar için rezervasyon talebi gönderme sayfası.",
   "start_url": "./index.html",
   "scope": "./",
