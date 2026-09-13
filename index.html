@@ -185,6 +185,17 @@
             #app-shell:not(.snapshot-active) > main > #printable-table-area > .mobile-schedule-view{ flex:1 1 auto; min-height:0; display:flex; flex-direction:column; }
             #app-shell:not(.snapshot-active) > main > #printable-table-area > .mobile-schedule-view > .mobile-week-grid{ flex:1 1 auto; min-height:0; }
         }
+
+        /* Mobilde parmakla hafta değiştirirken (veya ok düğmeleriyle) ızgaranın
+           kayarak-belirmesi: hangi yönden geldiği ok/kaydırma yönüne göre
+           değişir, böylece haftanın değiştiği daha anlaşılır olur. */
+        @keyframes weekSlideInRight{ from{ opacity:0; transform:translateX(28px); } to{ opacity:1; transform:translateX(0); } }
+        @keyframes weekSlideInLeft{ from{ opacity:0; transform:translateX(-28px); } to{ opacity:1; transform:translateX(0); } }
+        .week-slide-right{ animation:weekSlideInRight 0.22s ease-out; }
+        .week-slide-left{ animation:weekSlideInLeft 0.22s ease-out; }
+        @media (prefers-reduced-motion: reduce){
+            .week-slide-right, .week-slide-left{ animation:none; }
+        }
     </style>
 </head>
 <body>
@@ -732,8 +743,12 @@
                 return last.getTime() - 6 * 86400000 <= SISTEM_BITIS.getTime();
             }, [weekDays]);
 
-            const gotoPrevWeek = () => { if (!canGoPrevWeek) return; const d = new Date(currentDate); d.setDate(d.getDate() - 7); setCurrentDate(d); };
-            const gotoNextWeek = () => { if (!canGoNextWeek) return; const d = new Date(currentDate); d.setDate(d.getDate() + 7); setCurrentDate(d); };
+            // Mobil hafta ızgarasının hangi yönden kayarak geleceğini tutar:
+            // 1 = ileri hafta (sağdan gelir), -1 = geri hafta (soldan gelir).
+            const [weekSlideDir, setWeekSlideDir] = useState(1);
+
+            const gotoPrevWeek = () => { if (!canGoPrevWeek) return; setWeekSlideDir(-1); const d = new Date(currentDate); d.setDate(d.getDate() - 7); setCurrentDate(d); };
+            const gotoNextWeek = () => { if (!canGoNextWeek) return; setWeekSlideDir(1); const d = new Date(currentDate); d.setDate(d.getDate() + 7); setCurrentDate(d); };
 
             // Mobilde ana tabloyu parmakla sağa/sola kaydırarak hafta değiştirme.
             // Yatay kaydırma dikey kaydırmayla (sayfa scroll'u) karışmasın diye
@@ -1870,7 +1885,7 @@
 
                             {/* Mobil görünüm: tüm haftayı tek ekranda gösteren renkli ızgara */}
                             <div className={(isSnapshotMode ? "hidden" : "flex flex-col md:hidden") + " mobile-schedule-view"} onTouchStart={handleWeekTouchStart} onTouchEnd={handleWeekTouchEnd}>
-                                <div className="mobile-week-grid grid gap-1 p-2" style={{ gridTemplateColumns: '38px repeat(5, 1fr)', gridTemplateRows: 'auto repeat(6, 1fr)' }}>
+                                <div key={weekDays[0]?.dateStr} className={"mobile-week-grid grid gap-1 p-2 " + (weekSlideDir > 0 ? "week-slide-right" : "week-slide-left")} style={{ gridTemplateColumns: '38px repeat(5, 1fr)', gridTemplateRows: 'auto repeat(6, 1fr)' }}>
                                     <div></div>
                                     {weekDays.map((day, idx) => {
                                         const stripHoliday = pickHolidayForBlock(day.dayHolidays, activeBlock);
