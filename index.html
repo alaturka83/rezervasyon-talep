@@ -1061,9 +1061,9 @@
                         </div>
                     )}
 
-                    {/* ============ TALEPLERİM BALONCUĞU (öğretmen modu) ============ */}
+                    {/* ============ TALEPLERİM BALONCUĞU (öğretmen modu, sadece masaüstü — mobilde alt çubukta) ============ */}
                     {role !== 'admin' && (
-                        <button onClick={taleplerimAc} className="no-snapshot fixed z-40 right-4 md:right-6 bottom-20 md:bottom-6 flex items-center gap-2 pl-4 pr-5 py-3.5 rounded-full text-white font-semibold text-sm" style={{ background: 'var(--teal-dark)', boxShadow: '0 6px 18px rgba(20,25,40,.28)' }}>
+                        <button onClick={taleplerimAc} className="no-snapshot hidden md:flex fixed z-40 right-6 bottom-6 items-center gap-2 pl-4 pr-5 py-3.5 rounded-full text-white font-semibold text-sm" style={{ background: 'var(--teal-dark)', boxShadow: '0 6px 18px rgba(20,25,40,.28)' }}>
                             <Icon name="bell" className="w-5 h-5" /> Taleplerim
                             {benimBildirimSayisi > 0 && (
                                 <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full text-white text-[11px] font-bold flex items-center justify-center" style={{ background: 'var(--brick)' }}>{benimBildirimSayisi}</span>
@@ -1750,7 +1750,15 @@
                                 <button onClick={() => setShowDateJump(false)} className="px-5 py-3 rounded-xl text-sm font-semibold border" style={{ borderColor: 'var(--line)', color: 'var(--ink)', background: 'var(--panel)' }}>Vazgeç</button>
                             </div>
                         ) : (
-                            <div className="flex gap-2 max-w-6xl mx-auto">
+                            <div className="flex gap-2 max-w-6xl mx-auto items-center">
+                                {role !== 'admin' && (
+                                    <button onClick={taleplerimAc} className="relative shrink-0 w-11 h-11 rounded-xl flex items-center justify-center border" style={{ borderColor: 'var(--line)', background: 'var(--panel)' }} aria-label="Taleplerim">
+                                        <Icon name="bell" className="w-4.5 h-4.5" style={{ color: 'var(--teal-dark)' }} />
+                                        {benimBildirimSayisi > 0 && (
+                                            <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full text-white text-[9px] font-bold flex items-center justify-center" style={{ background: 'var(--brick)' }}>{benimBildirimSayisi}</span>
+                                        )}
+                                    </button>
+                                )}
                                 <button onClick={goToday} className="flex-1 py-3 rounded-xl text-sm font-semibold border" style={{ borderColor: 'var(--line)', color: 'var(--ink)', background: 'var(--panel)' }}>Bugüne git</button>
                                 <button onClick={() => setShowDateJump(true)} className="flex-1 py-3 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2" style={{ background: 'var(--teal-dark)' }}>
                                     <Icon name="search" className="w-4 h-4" /> Tarihe göre ara
@@ -1966,7 +1974,7 @@
     serit.setAttribute('aria-label', 'Uygulamayı ana ekrana veya masaüstüne ekle');
     serit.style.cssText =
       'position:fixed;left:10px;right:10px;z-index:9998;max-width:420px;margin:0 auto;' +
-      'bottom:calc(10px + env(safe-area-inset-bottom,0px));' +
+      'bottom:calc(72px + env(safe-area-inset-bottom,0px));' +
       'display:flex;align-items:center;gap:10px;' +
       'padding:11px 12px;border-radius:14px;' +
       'background:#2D7D74;color:#fff;' +
@@ -1979,6 +1987,7 @@
       '<button type="button" data-kapat aria-label="Şimdi değil" style="flex:none;width:34px;height:40px;border:0;border-radius:11px;background:transparent;color:rgba(255,255,255,.65);font:inherit;font-size:18px;">×</button>';
 
     serit.querySelector('[data-ek]').onclick = function () {
+      try { localStorage.setItem(SNOOZE_KEY, String(Date.now())); } catch (e) {}
       kapatSerit();
       kurulumuBaslat();
     };
@@ -1992,8 +2001,16 @@
   window.addEventListener('beforeinstallprompt', function (e) {
     e.preventDefault();
     olay = e;
-    if (kuruluMu()) return;
-    setTimeout(goster, 2500);
+  });
+
+  // Tarayici fark etmeksizin (iOS Safari, Firefox, Chrome, Android vb.) ilk
+  // ziyarette serit gosterilir; beforeinstallprompt burada beklenmez cunku
+  // bircogu bu olayi hic desteklemiyor. Zaten kuruluysa (standalone) veya
+  // yakin zamanda kapatilmissa (erteliMi) hicbir sey gosterilmez.
+  window.addEventListener('load', function () {
+    setTimeout(function () {
+      if (!kuruluMu() && !erteliMi()) goster();
+    }, 2500);
   });
 
   window.addEventListener('appinstalled', function () {
