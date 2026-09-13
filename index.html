@@ -1019,8 +1019,10 @@
                                 </div>
                                 <div className="min-w-0">
                                     <h1 className="font-display font-semibold text-lg sm:text-2xl leading-tight truncate" style={{ color: 'var(--ink)' }}>{settings.schoolName || SISTEM_ADI}</h1>
-                                    <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
-                                        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: role === 'admin' ? 'var(--ochre)' : 'var(--teal)' }}></span>
+                                    <div className="flex items-center gap-1.5 mt-0.5 min-w-0 flex-wrap">
+                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold uppercase tracking-wide shrink-0" style={{ background: role === 'admin' ? 'var(--ochre-tint)' : 'var(--teal-tint)', color: role === 'admin' ? '#7A5A1E' : 'var(--teal-dark)' }}>
+                                            {role === 'admin' ? 'Yönetici' : 'Görüntüleme'}
+                                        </span>
                                         <span className="text-xs sm:text-sm font-medium truncate" style={{ color: 'var(--ink-soft)' }}>
                                             {settings.schoolSubtitle}
                                         </span>
@@ -1330,19 +1332,19 @@
                                         {settingsTab === 'saatler' && (
                                             <div className="max-w-3xl">
                                                 <p className="hidden sm:block text-sm font-medium mb-5" style={{ color: 'var(--ink-soft)' }}>6 ders saatlik sabah ve öğle bloklarının başlangıç/bitiş saatlerini güncelleyin. Değişiklikler kaydedildiği an masaüstü ve mobil görünümün tamamına yansır.</p>
-                                                <div className="grid sm:grid-cols-2 gap-4 sm:gap-6">
+                                                <div className="grid grid-cols-2 gap-1.5 sm:gap-6">
                                                     {[['SABAH', 'Sabah dersleri', MORNING_LESSONS], ['ÖĞLE', 'Öğle dersleri', AFTERNOON_LESSONS]].map(([blockKey, blockLabel, lessons]) => (
                                                         <div key={blockKey} className="min-w-0">
-                                                            <p className="text-xs font-semibold mb-2 uppercase tracking-wide" style={{ color: 'var(--ink-soft)' }}>{blockLabel}</p>
-                                                            <div className="space-y-1.5 sm:space-y-2">
+                                                            <p className="text-[10px] sm:text-xs font-semibold mb-1.5 sm:mb-2 uppercase tracking-wide truncate" style={{ color: 'var(--ink-soft)' }}>{blockLabel}</p>
+                                                            <div className="space-y-1 sm:space-y-2">
                                                                 {lessons.map((lesson, idx) => (
-                                                                    <div key={idx} className="p-2 rounded-xl border" style={{ borderColor: 'var(--line)', background: 'var(--paper)' }}>
-                                                                        <div className="text-[11px] font-semibold mb-1 sm:hidden" style={{ color: 'var(--teal-dark)' }}>{lesson.label}</div>
-                                                                        <div className="flex items-center gap-1">
+                                                                    <div key={idx} className="p-1 sm:p-2 rounded-lg sm:rounded-xl border" style={{ borderColor: 'var(--line)', background: 'var(--paper)' }}>
+                                                                        <div className="text-[9px] sm:text-[11px] font-semibold mb-0.5 sm:mb-1 sm:hidden" style={{ color: 'var(--teal-dark)' }}>{lesson.label}</div>
+                                                                        <div className="flex items-center gap-0.5 sm:gap-1">
                                                                             <div className="hidden sm:block w-14 shrink-0 text-xs font-semibold" style={{ color: 'var(--teal-dark)' }}>{lesson.label}</div>
-                                                                            <input type="time" value={lesson.start} onChange={e => handleSaveLessonTimes(blockKey, idx, 'start', e.target.value)} className="flex-1 min-w-0 w-0 px-1.5 py-1.5 rounded-lg text-xs sm:text-sm outline-none border-2" style={{ borderColor: 'var(--line)', background: 'var(--panel)' }} />
-                                                                            <span className="text-xs shrink-0" style={{ color: 'var(--ink-soft)' }}>–</span>
-                                                                            <input type="time" value={lesson.end} onChange={e => handleSaveLessonTimes(blockKey, idx, 'end', e.target.value)} className="flex-1 min-w-0 w-0 px-1.5 py-1.5 rounded-lg text-xs sm:text-sm outline-none border-2" style={{ borderColor: 'var(--line)', background: 'var(--panel)' }} />
+                                                                            <input type="time" value={lesson.start} onChange={e => handleSaveLessonTimes(blockKey, idx, 'start', e.target.value)} className="flex-1 min-w-0 w-0 px-0.5 sm:px-1.5 py-1 sm:py-1.5 rounded-md sm:rounded-lg text-[10px] sm:text-sm outline-none border-2" style={{ borderColor: 'var(--line)', background: 'var(--panel)' }} />
+                                                                            <span className="text-[9px] sm:text-xs shrink-0" style={{ color: 'var(--ink-soft)' }}>–</span>
+                                                                            <input type="time" value={lesson.end} onChange={e => handleSaveLessonTimes(blockKey, idx, 'end', e.target.value)} className="flex-1 min-w-0 w-0 px-0.5 sm:px-1.5 py-1 sm:py-1.5 rounded-md sm:rounded-lg text-[10px] sm:text-sm outline-none border-2" style={{ borderColor: 'var(--line)', background: 'var(--panel)' }} />
                                                                         </div>
                                                                     </div>
                                                                 ))}
@@ -1402,9 +1404,12 @@
                                                     </div>
                                                     <div className="mt-3">
                                                         <label className="block text-xs font-semibold mb-2" style={{ color: 'var(--ink-soft)' }}>Kapanış türü</label>
-                                                        <div className="flex flex-wrap gap-2">
-                                                            {[['TAM', 'Tüm gün kapalı'], ['SABAH', 'Sadece sabah kapalı'], ['ÖĞLE', 'Sadece öğle kapalı']].map(([key, label]) => (
-                                                                <button type="button" key={key} onClick={() => setNewHolidayForm(f => ({ ...f, block: key }))} className="px-3.5 py-2 rounded-lg text-xs font-semibold border-2" style={newHolidayForm.block === key ? { background: 'var(--teal)', color: 'white', borderColor: 'var(--teal)' } : { borderColor: 'var(--line)', color: 'var(--ink-soft)' }}>{label}</button>
+                                                        <div className="grid grid-cols-3 gap-1.5 sm:flex sm:flex-wrap sm:gap-2">
+                                                            {[['TAM', 'Tüm gün', 'Tüm gün kapalı'], ['SABAH', 'Sabah', 'Sadece sabah kapalı'], ['ÖĞLE', 'Öğle', 'Sadece öğle kapalı']].map(([key, shortLabel, label]) => (
+                                                                <button type="button" key={key} onClick={() => setNewHolidayForm(f => ({ ...f, block: key }))} className="px-1.5 sm:px-3.5 py-2 rounded-lg text-[10px] sm:text-xs font-semibold border-2 whitespace-nowrap text-center" style={newHolidayForm.block === key ? { background: 'var(--teal)', color: 'white', borderColor: 'var(--teal)' } : { borderColor: 'var(--line)', color: 'var(--ink-soft)' }}>
+                                                                    <span className="sm:hidden">{shortLabel}</span>
+                                                                    <span className="hidden sm:inline">{label}</span>
+                                                                </button>
                                                             ))}
                                                         </div>
                                                     </div>
@@ -1816,10 +1821,10 @@
                                     <Icon name="search" className="w-4 h-4" /> Tarihe göre ara
                                 </button>
                                 {role !== 'admin' && (
-                                    <button onClick={taleplerimAc} className="relative shrink-0 w-11 h-11 rounded-xl flex items-center justify-center border" style={{ borderColor: 'var(--line)', background: 'var(--panel)' }} aria-label="Taleplerim">
-                                        <Icon name="bell" className="w-4.5 h-4.5" style={{ color: 'var(--teal-dark)' }} />
+                                    <button onClick={taleplerimAc} className="relative shrink-0 w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: 'var(--brick)' }} aria-label="Taleplerim">
+                                        <Icon name="bell" className="w-3.5 h-3.5" style={{ color: 'white' }} />
                                         {benimBildirimSayisi > 0 && (
-                                            <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full text-white text-[9px] font-bold flex items-center justify-center" style={{ background: 'var(--brick)' }}>{benimBildirimSayisi}</span>
+                                            <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold flex items-center justify-center" style={{ background: 'white', color: 'var(--brick)' }}>{benimBildirimSayisi}</span>
                                         )}
                                     </button>
                                 )}
