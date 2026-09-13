@@ -4,7 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Rezervasyon Talebi</title>
+    <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#2D7D74">
+    <link rel="icon" href="icon-192.png">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Rez. Talep">
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React & ReactDOM -->
@@ -455,7 +461,22 @@
                     .filter(Boolean)
                     .reverse();
             }, [benimTalepAnahtarlari, taleplerListesi]);
-            const benimBekleyenSayisi = useMemo(() => benimTalepKayitlari.filter(t => t.durum === 'bekliyor').length, [benimTalepKayitlari]);
+
+            // "Görüldü" takibi: her talebin son bakıldığındaki durumu (bekliyor/
+            // onaylandı/reddedildi) localStorage'da tutulur. Güncel durum bundan
+            // farklıysa bildirim rozetinde sayılır; Taleplerim açılınca sıfırlanır.
+            const [gorulenDurumlar, setGorulenDurumlar] = useState(() => {
+                try { return JSON.parse(localStorage.getItem('rz_talep_gorulen') || '{}'); } catch (e) { return {}; }
+            });
+            const benimBildirimSayisi = useMemo(() => benimTalepKayitlari.filter(t => gorulenDurumlar[t.key] !== t.durum).length, [benimTalepKayitlari, gorulenDurumlar]);
+
+            const taleplerimAc = () => {
+                const yeni = { ...gorulenDurumlar };
+                benimTalepKayitlari.forEach(t => { yeni[t.key] = t.durum; });
+                setGorulenDurumlar(yeni);
+                try { localStorage.setItem('rz_talep_gorulen', JSON.stringify(yeni)); } catch (e) {}
+                setShowTaleplerimModal(true);
+            };
 
             const findTalep = useCallback((day, lesson) => {
                 if (!day.valid) return null;
@@ -479,6 +500,13 @@
                     const yeniAnahtarlar = [ref.key, ...benimTalepAnahtarlari].slice(0, 80);
                     setBenimTalepAnahtarlari(yeniAnahtarlar);
                     localStorage.setItem('rz_talep_anahtarlarim', JSON.stringify(yeniAnahtarlar));
+                    // Az önce kendi gönderdiğimiz talebi zaten biliyoruz — "bekliyor"
+                    // durumunu baştan görülmüş sayarak gereksiz bildirim çıkmasın.
+                    setGorulenDurumlar(prev => {
+                        const next = { ...prev, [ref.key]: 'bekliyor' };
+                        try { localStorage.setItem('rz_talep_gorulen', JSON.stringify(next)); } catch (e) {}
+                        return next;
+                    });
                     setTalepGonderiliyor(false);
                     setEditingCell(null);
                 }).catch(err => {
@@ -907,12 +935,6 @@
 
                             {/* Masaüstü aksiyonları */}
                             <div className="hidden md:flex items-center gap-2 shrink-0">
-                                <button onClick={() => setShowTaleplerimModal(true)} className="relative flex items-center gap-2 px-4 py-2.5 rounded-xl text-base font-semibold border transition-colors" style={{ borderColor: 'var(--line)', color: 'var(--ink)' }}>
-                                    <Icon name="bell" className="w-5 h-5" /> Taleplerim
-                                    {benimBekleyenSayisi > 0 && (
-                                        <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full text-white text-[11px] font-bold flex items-center justify-center" style={{ background: 'var(--ochre)' }}>{benimBekleyenSayisi}</span>
-                                    )}
-                                </button>
                                 <button onClick={openSnapshotMode} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-base font-semibold border transition-colors" style={{ borderColor: 'var(--line)', color: 'var(--ink)' }}>
                                     <Icon name="camera" className="w-5 h-5" /> Paylaş
                                 </button>
@@ -941,6 +963,14 @@
                         </div>
                     </header>
 
+                    {/* ============ TALEPLERİM BALONCUĞU ============ */}
+                    <button onClick={taleplerimAc} className="no-snapshot fixed z-40 right-4 md:right-6 bottom-20 md:bottom-6 flex items-center gap-2 pl-4 pr-5 py-3.5 rounded-full text-white font-semibold text-sm" style={{ background: 'var(--teal-dark)', boxShadow: '0 6px 18px rgba(20,25,40,.28)' }}>
+                        <Icon name="bell" className="w-5 h-5" /> Taleplerim
+                        {benimBildirimSayisi > 0 && (
+                            <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full text-white text-[11px] font-bold flex items-center justify-center" style={{ background: 'var(--brick)' }}>{benimBildirimSayisi}</span>
+                        )}
+                    </button>
+
                     {/* ============ MOBİL MENÜ (SLIDE-OVER) ============ */}
                     {showMobileMenu && (
                         <div className="no-snapshot fixed inset-0 z-[850] md:hidden">
@@ -956,12 +986,6 @@
                                     <div className="px-1 pb-2 text-xs font-medium" style={{ color: 'var(--ink-soft)' }}>
                                         Rezervasyon talebi göndermek için boş bir saate dokunun.
                                     </div>
-                                    <button onClick={() => { setShowTaleplerimModal(true); setShowMobileMenu(false); }} className="w-full flex items-center justify-between gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold border" style={{ borderColor: 'var(--line)' }}>
-                                        <span className="flex items-center gap-3"><Icon name="bell" className="w-4 h-4" /> Taleplerim</span>
-                                        {benimBekleyenSayisi > 0 && (
-                                            <span className="min-w-[20px] h-5 px-1 rounded-full text-white text-[11px] font-bold flex items-center justify-center" style={{ background: 'var(--ochre)' }}>{benimBekleyenSayisi}</span>
-                                        )}
-                                    </button>
                                 </div>
                                 <div className="p-5 text-[11px] font-medium border-t" style={{ color: 'var(--ink-soft)', borderColor: 'var(--line)' }}>{SISTEM_ADI}</div>
                             </div>
@@ -1308,5 +1332,212 @@
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
+
+<!-- =========================================================================
+     ANA EKRANA / MASAÜSTÜNE EKLE — kurulum şeridi + elle kurulum kılavuzu
+     • Service worker (sw.js) bu HTML dosyasıyla AYNI klasörde durmalı.
+     • Chrome/Edge (Android + Windows/Mac masaüstü) "beforeinstallprompt"
+       olayını destekler: bu durumda alt tarafta ince bir şerit belirir ve
+       "Ekle" ile tarayıcının kendi kurulum penceresi açılır. Kapatılırsa
+       14 gün boyunca tekrar çıkmaz (kalıcı olarak gizlenmez).
+     • iOS Safari / masaüstü Safari / Firefox gibi bu olayı HİÇ desteklemeyen
+       tarayıcılarda otomatik şerit çıkmaz; bunun yerine şeridin "Ekle" tuşu
+       platforma göre adım adım elle kurulum talimatları gösterir.
+     • https dışında (ör. file:// ile açıldığında) hiçbir şey yapmaz.
+     ========================================================================= -->
+<script>
+(function () {
+  var SNOOZE_KEY = 'rezervasyon_talep_kurulum_ertele_v1';
+  var SNOOZE_GUN = 14;
+  var olay = null, serit = null;
+
+  /* --- 1. Service worker --- */
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function (e) {
+        console.warn('Service worker kaydedilemedi:', e);
+      });
+    });
+  }
+
+  /* --- 2. Yardımcılar --- */
+  function kuruluMu() {
+    try {
+      return window.matchMedia('(display-mode: standalone)').matches ||
+             window.navigator.standalone === true;
+    } catch (e) { return false; }
+  }
+  function erteliMi() {
+    try {
+      var t = parseInt(localStorage.getItem(SNOOZE_KEY) || '0', 10);
+      return t ? (Date.now() - t) < SNOOZE_GUN * 86400000 : false;
+    } catch (e) { return false; }
+  }
+  function platform() {
+    var ua = navigator.userAgent || '';
+    var iOS = /iPad|iPhone|iPod/.test(ua) ||
+      (ua.indexOf('Macintosh') > -1 && navigator.maxTouchPoints > 1); /* iPadOS masaüstü gibi görünür */
+    if (iOS) return 'ios';
+    if (/Android/.test(ua)) return 'android';
+    if (/Macintosh/.test(ua)) return 'mac';
+    if (/Firefox/.test(ua)) return 'firefox';
+    return 'windows';
+  }
+  /* Instagram/WhatsApp/Facebook/TikTok gibi uygulamaların İÇİNDEKİ mini
+     tarayıcılarda "Ana ekrana ekle" seçeneği ya hiç yok ya da farklı bir
+     yerde — bu yüzden kullanıcı "3 nokta" diye bir şey bulamıyor. Böyle
+     bir ortam tespit edilirse önce gerçek tarayıcıya geçmesi söylenir. */
+  function uygulamaIciTarayiciMi() {
+    var ua = navigator.userAgent || '';
+    return /FBAN|FBAV|FB_IAB|Instagram|Line\/|WhatsApp|Twitter|TikTok|GSA\/.*wv|; wv\)/i.test(ua);
+  }
+
+  /* --- 3. Alt şerit --- */
+  function kapatSerit() {
+    if (serit) { serit.remove(); serit = null; }
+  }
+
+  function goster() {
+    if (serit || kuruluMu() || erteliMi()) return;
+    serit = document.createElement('div');
+    serit.setAttribute('role', 'dialog');
+    serit.setAttribute('aria-label', 'Uygulamayı ana ekrana veya masaüstüne ekle');
+    serit.style.cssText =
+      'position:fixed;left:10px;right:10px;z-index:9998;max-width:420px;margin:0 auto;' +
+      'bottom:calc(10px + env(safe-area-inset-bottom,0px));' +
+      'display:flex;align-items:center;gap:10px;' +
+      'padding:11px 12px;border-radius:14px;' +
+      'background:#2D7D74;color:#fff;' +
+      'font-family:"Work Sans",system-ui,sans-serif;font-size:13px;font-weight:600;' +
+      'box-shadow:0 8px 26px rgba(32,38,31,.35);';
+    serit.innerHTML =
+      '<img src="icon-192.png" alt="" style="width:34px;height:34px;border-radius:9px;flex:none;">' +
+      '<span style="flex:1;line-height:1.35;">Rezervasyon Talebi\'ni ana ekranınıza veya masaüstünüze ekleyin — adres çubuğu olmadan, tıpkı ayrı bir uygulama gibi açılır.</span>' +
+      '<button type="button" data-ek style="flex:none;min-height:40px;padding:0 14px;border:0;border-radius:11px;background:#AE7E2B;color:#fff;font:inherit;font-weight:800;">Ekle</button>' +
+      '<button type="button" data-kapat aria-label="Şimdi değil" style="flex:none;width:34px;height:40px;border:0;border-radius:11px;background:transparent;color:rgba(255,255,255,.65);font:inherit;font-size:18px;">×</button>';
+
+    serit.querySelector('[data-ek]').onclick = function () {
+      kapatSerit();
+      kurulumuBaslat();
+    };
+    serit.querySelector('[data-kapat]').onclick = function () {
+      try { localStorage.setItem(SNOOZE_KEY, String(Date.now())); } catch (e) {}
+      kapatSerit();
+    };
+    document.body.appendChild(serit);
+  }
+
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    olay = e;
+    if (kuruluMu()) return;
+    setTimeout(goster, 2500);
+  });
+
+  window.addEventListener('appinstalled', function () {
+    try { localStorage.removeItem(SNOOZE_KEY); } catch (e) {}
+    kapatSerit();
+    kapatModal();
+  });
+
+  /* --- 4. Elle kurulum kılavuzu (modal) --- Chrome/Edge dışında (iOS
+     Safari, masaüstü Safari, Firefox) beforeinstallprompt hiç ateşlenmez;
+     bu yüzden platforma göre adım adım talimat gösteren bir pencere var. */
+  var modal = null;
+
+  function modalOlustur() {
+    if (modal) return modal;
+    modal = document.createElement('div');
+    modal.style.cssText =
+      'position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;' +
+      'background:rgba(32,38,31,.6);backdrop-filter:blur(2px);padding:16px;';
+    modal.innerHTML =
+      '<div style="background:#FCFBF6;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.35);width:100%;max-width:420px;max-height:90vh;overflow:auto;font-family:\'Work Sans\',system-ui,sans-serif;">' +
+        '<div style="display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid #C7C0A4;">' +
+          '<div style="width:38px;height:38px;border-radius:10px;background:#2D7D74;color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;flex:none;">📲</div>' +
+          '<h3 style="margin:0;font-size:1rem;font-weight:800;color:#20261F;flex:1;">Ana Ekrana / Masaüstüne Ekle</h3>' +
+          '<button type="button" data-modal-kapat aria-label="Kapat" style="border:0;background:transparent;font-size:20px;line-height:1;color:#5E675B;cursor:pointer;">✕</button>' +
+        '</div>' +
+        '<div style="padding:16px 18px;">' +
+          '<ol data-adimlar style="margin:0 0 12px;padding-left:20px;color:#20261F;font-size:.86rem;line-height:1.7;"></ol>' +
+          '<div data-not style="font-size:.74rem;color:#5E675B;line-height:1.55;"></div>' +
+        '</div>' +
+      '</div>';
+    modal.addEventListener('click', function (e) { if (e.target === modal) kapatModal(); });
+    modal.querySelector('[data-modal-kapat]').onclick = kapatModal;
+    document.body.appendChild(modal);
+    return modal;
+  }
+
+  function kapatModal() {
+    if (modal) modal.style.display = 'none';
+  }
+
+  function adimGoster() {
+    var m = modalOlustur();
+    var p = platform();
+    var adimlar, not_;
+
+    if (uygulamaIciTarayiciMi()) {
+      adimlar =
+        '<li>Bu sayfa şu an Instagram/WhatsApp/Facebook gibi bir uygulamanın <b>kendi mini tarayıcısında</b> açılmış görünüyor — bu tür ekranlarda "Ana ekrana ekle" seçeneği bulunmaz.</li>' +
+        '<li>Sağ üstteki <b>⋮</b> veya <b>paylaş / üç nokta</b> simgesinden <b>"Tarayıcıda Aç"</b> ya da <b>"Open in Chrome/Safari"</b> seçeneğine dokunun.</li>' +
+        '<li>Bağlantı gerçek Chrome (Android) veya Safari (iPhone) uygulamasında açıldıktan sonra bu "Kısayol Ekle" adımını orada tekrar deneyin.</li>';
+      not_ = 'Sistem tarayıcısı dışında (uygulama içi mini tarayıcılarda) kısayol/PWA kurulumu desteklenmez.';
+    } else if (p === 'ios') {
+      adimlar =
+        '<li>Ekranın altındaki <b>Paylaş</b> düğmesine dokunun (kare içinden çıkan ok).</li>' +
+        '<li>Açılan listeden <b>Ana Ekrana Ekle</b> seçeneğine dokunun.</li>' +
+        '<li>Sağ üstteki <b>Ekle</b> düğmesine basın — simge ana ekranınıza gelir.</li>';
+      not_ = 'Bu adımlar yalnızca Safari\'de çalışır. Chrome/Instagram gibi iOS\'ta başka bir uygulama içinde açtıysanız, önce sağ üstteki paylaş simgesinden "Safari\'de Aç" seçeneğini kullanın.';
+    } else if (p === 'android') {
+      adimlar =
+        '<li>Ekranın <b>sağ üst köşesindeki üç nokta (⋮)</b> simgesine dokunun — Samsung Internet\'te bu simge alt çubukta <b>☰ menü</b> olarak görünür.</li>' +
+        '<li>Açılan menüde <b>"Ana ekrana ekle"</b>, <b>"Uygulamayı yükle"</b> veya <b>"Yükle"</b> yazan satırı bulup dokunun.</li>' +
+        '<li><b>Ekle / Yükle</b> deyin — simge ana ekranınıza gelir.</li>';
+      not_ = 'Bu satırı göremiyorsanız: (1) bağlantıyı WhatsApp/Instagram gibi bir uygulama yerine doğrudan Chrome\'da açtığınızdan emin olun, (2) Chrome\'u güncelleyin, (3) paneli birkaç kez ziyaret edip birkaç dakika kullandıktan sonra tekrar deneyin.';
+    } else if (p === 'mac') {
+      adimlar =
+        '<li><b>Safari</b> kullanıyorsanız: üst menüden <b>Dosya → Dock\'a Ekle</b> (macOS Sonoma ve üzeri).</li>' +
+        '<li><b>Chrome / Edge</b> kullanıyorsanız: adres çubuğunun sağındaki kurulum simgesine (⊕ veya bilgisayar ikonu) tıklayın, ardından <b>Yükle</b> deyin.</li>' +
+        '<li>Kurulan uygulama artık Dock\'tan veya Launchpad\'den, tarayıcı açmadan doğrudan başlatılabilir.</li>';
+      not_ = 'Safari sürümü Dock\'a Ekle\'yi desteklemiyorsa Chrome veya Edge ile kurulum yapmanızı öneririz.';
+    } else if (p === 'firefox') {
+      adimlar =
+        '<li>Firefox masaüstü sürümü uygulama kurulumunu (PWA) desteklemez.</li>' +
+        '<li>Bunun yerine bu sayfayı <b>yer imlerine / araç çubuğuna</b> ekleyebilir ya da aynı bilgisayarda Chrome veya Edge ile açıp oradan kurabilirsiniz.</li>' +
+        '<li>Chrome/Edge\'de: adres çubuğunun sağındaki kurulum simgesine tıklayıp <b>Yükle</b> deyin.</li>';
+      not_ = 'Kurulduktan sonra uygulama, adres çubuğu olmadan ayrı bir pencerede ve masaüstü/görev çubuğu kısayoluyla açılır.';
+    } else {
+      adimlar =
+        '<li>Adres çubuğunun sağ tarafındaki kurulum simgesine (⊕ veya bilgisayar + ok ikonu) tıklayın.</li>' +
+        '<li>Görünmüyorsa tarayıcının sağ üstündeki <b>⋮</b> menüsünden <b>Uygulamayı yükle</b> / <b>Yükle</b> seçeneğini seçin.</li>' +
+        '<li><b>Yükle</b> deyin — kısayol masaüstünüze ve başlat menüsüne eklenir.</li>';
+      not_ = 'Kurulduktan sonra uygulama, masaüstü/başlat menüsü kısayoluyla, adres çubuğu olmadan doğrudan açılır.';
+    }
+
+    m.querySelector('[data-adimlar]').innerHTML = adimlar;
+    m.querySelector('[data-not]').textContent = kuruluMu()
+      ? 'Bu panel şu an zaten kısayoldan/kurulu haliyle açık görünüyor.'
+      : not_;
+    m.style.display = 'flex';
+  }
+
+  /* --- 5. Tek giriş noktası --- */
+  function kurulumuBaslat() {
+    if (olay) {
+      olay.prompt();
+      olay.userChoice.then(function () { olay = null; });
+      return;
+    }
+    adimGoster();
+  }
+
+  window.RezervasyonTalepKurulumu = {
+    ac: kurulumuBaslat,
+    kuruluMu: kuruluMu
+  };
+})();
+</script>
 </body>
 </html>
