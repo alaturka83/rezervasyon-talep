@@ -15,7 +15,7 @@
    yalnızca uygulama kabuğunu (HTML/manifest/simgeler) çevrimdışıyken
    de açılabilir tutar.
 ============================================================ */
-const ONBELLEK = 'rezervasyon-talep-kabuk-v1';
+const ONBELLEK = 'rezervasyon-talep-kabuk-v2';
 const KABUK = [
   './index.html',
   './manifest.json',
@@ -52,5 +52,25 @@ self.addEventListener('fetch', e => {
         return cevap;
       })
       .catch(() => caches.match(istek).then(c => c || caches.match('./index.html')))
+  );
+});
+
+/* ------------------------------------------------------------
+   BİLDİRİME DOKUNULDUĞUNDA (yeni talep bildirimi vb.)
+   ------------------------------------------------------------
+   Uygulama zaten açık bir sekmede/pencerede ise ona odaklanır;
+   değilse yeni bir pencere/sekmede açar. Bildirim, index.html
+   içindeki reg.showNotification(...) çağrısıyla oluşturulur —
+   burada yalnızca tıklama davranışı yönetilir.
+------------------------------------------------------------ */
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+      for (const client of clientList) {
+        if ('focus' in client) return client.focus();
+      }
+      if (self.clients.openWindow) return self.clients.openWindow('./index.html');
+    })
   );
 });
