@@ -347,7 +347,7 @@ function render() {
     // Talep modalı
     if (state.modalSlot) {
         const s = state.modalSlot;
-        html += `<div class="overlay" data-action="overlay-kapat">
+        html += `<div class="overlay">
             <div class="sheet">
                 <h3>Rezervasyon Talebi</h3>
                 <div class="sub">${esc(s.location)} · ${s.dateDisplay} · ${esc(s.label)} (${s.block})</div>
@@ -364,7 +364,7 @@ function render() {
 
     // Taleplerim paneli
     if (state.taleplerimAcik) {
-        html += `<div class="overlay" data-action="taleplerim-kapat">
+        html += `<div class="overlay">
             <div class="sheet">
                 <h3>Taleplerim</h3>
                 <div class="sub">Bu cihazdan gönderdiğiniz talepler</div>
@@ -384,12 +384,12 @@ function render() {
 }
 
 document.getElementById('app').addEventListener('click', e => {
-    // Overlay'in arka planına (doğrudan kendisine) tıklanınca kapat — içindeki
-    // her şeye (input, buton, boş alan) tıklamak modalı kapatmamalı.
+    // Arka plana (overlay'in kendisine, içindeki bir şeye değil) tıklanınca
+    // hangi panel açıksa onu kapat. İçerideki input/textarea/buton tıklamaları
+    // bu bloğu hiç görmez (e.target overlay olmadığı için).
     if (e.target.classList.contains('overlay')) {
-        const bgAction = e.target.dataset.action;
-        if (bgAction === 'overlay-kapat') modalKapat();
-        else if (bgAction === 'taleplerim-kapat') { state.taleplerimAcik = false; render(); }
+        if (state.modalSlot) modalKapat();
+        else if (state.taleplerimAcik) { state.taleplerimAcik = false; render(); }
         return;
     }
     const el = e.target.closest('[data-action]');
