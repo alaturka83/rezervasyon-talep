@@ -1102,14 +1102,6 @@
                             {/* Masaüstü aksiyonları */}
                             <div className="hidden md:flex items-center gap-2 shrink-0">
                                 {role === 'admin' && (
-                                    <button onClick={() => setShowTaleplerModal(true)} className="relative flex items-center gap-2 px-4 py-2.5 rounded-xl text-base font-semibold border transition-colors" style={{ borderColor: 'var(--line)', color: 'var(--ink)' }}>
-                                        <Icon name="bell" className="w-5 h-5" /> Talepler
-                                        {bekleyenTalepSayisi > 0 && (
-                                            <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full text-white text-[11px] font-bold flex items-center justify-center" style={{ background: 'var(--brick)' }}>{bekleyenTalepSayisi}</span>
-                                        )}
-                                    </button>
-                                )}
-                                {role === 'admin' && (
                                     <button onClick={() => setShowSettingsModal(true)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-base font-semibold border transition-colors" style={{ borderColor: 'var(--line)', color: 'var(--ink)' }}>
                                         <Icon name="settings" className="w-5 h-5" /> Ayarlar
                                     </button>
@@ -1196,14 +1188,6 @@
                                     <div className="px-1 pb-2 text-xs font-medium" style={{ color: 'var(--ink-soft)' }}>
                                         {role === 'admin' ? 'Yönetici olarak oturum açtınız.' : 'Şu an görüntüleme modundasınız.'}
                                     </div>
-                                    {role === 'admin' && (
-                                        <button onClick={() => { setShowTaleplerModal(true); setShowMobileMenu(false); }} className="w-full flex items-center justify-between gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold border" style={{ borderColor: 'var(--line)' }}>
-                                            <span className="flex items-center gap-3"><Icon name="bell" className="w-4 h-4" /> Talepler</span>
-                                            {bekleyenTalepSayisi > 0 && (
-                                                <span className="min-w-[20px] h-5 px-1 rounded-full text-white text-[11px] font-bold flex items-center justify-center" style={{ background: 'var(--brick)' }}>{bekleyenTalepSayisi}</span>
-                                            )}
-                                        </button>
-                                    )}
                                     {role === 'admin' && (
                                         <button onClick={() => { setShowSettingsModal(true); setShowMobileMenu(false); }} className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold border" style={{ borderColor: 'var(--line)' }}>
                                             <Icon name="settings" className="w-4 h-4" /> Ayarlar
