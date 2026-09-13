@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="robots" content="noindex, nofollow">
     <title>Rezervasyon Sistemi</title>
     <!-- ANA EKRANA / MASAÜSTÜNE EKLE (PWA) — bkz. sayfa sonundaki kurulum betiği -->
     <link rel="manifest" href="manifest.json">
@@ -224,6 +225,11 @@
         const SISTEM_ADI = "İdare Rezervasyon Sistemi";
         const SISTEM_KISA = "İRS";
         const DEFAULT_ADMIN_PASSWORD = "130513";
+        // Site geneli erişim kodu — linki bilmeyen/rastgele bulan dışarıdan
+        // kişilerin uygulamayı hiç göremeden önce girmesi gereken paylaşımlı
+        // kod. Yönetici şifresinden farklıdır: bu sadece "içeri girebilme",
+        // yönetici şifresi ise "içeride düzenleme yapabilme" içindir.
+        const DEFAULT_SITE_CODE = "okul2026";
         const DEFAULT_LOCATIONS = ["Konferans Salonu", "Kütüphane"];
 
         // Sistemin kapsadığı tarih aralığı (yalnızca hafta içi günler kullanılabilir)
@@ -348,6 +354,15 @@
         const RZ_TALEPLER_PATH = 'rezervasyon/talepler';
 
         function App() {
+            // Site erişim kilidi: doğru kod girilene kadar hiçbir içerik
+            // (öğretmen görünümü dahil) render edilmez. Girilen kod bu cihazda
+            // localStorage'da saklanır; yönetici kodu değiştirirse, eski kod
+            // artık eşleşmediği için cihaz otomatik olarak yeniden kilitlenir.
+            const [girilenKod, setGirilenKod] = useState(() => {
+                try { return localStorage.getItem('rz_site_kod') || ''; } catch (e) { return ''; }
+            });
+            const [kilitHata, setKilitHata] = useState('');
+
             // Yönetici oturumu localStorage'da tutulur — kısayoldan/ana ekrandan her
             // açılışta şifre sorulmaması için "Çıkış yap" ile temizlenene kadar kalıcıdır.
             const [role, setRole] = useState(() => {
@@ -368,7 +383,7 @@
                 try { localStorage.setItem(anahtar, JSON.stringify(deger)); } catch (e) {}
             };
 
-            const [settings, setSettings] = useState(() => okuOnbellek('rz_onbellek_ayarlar', { locations: DEFAULT_LOCATIONS, adminPassword: DEFAULT_ADMIN_PASSWORD, schoolName: SISTEM_ADI, schoolSubtitle: '', logoDataUrl: '', holidays: DEFAULT_HOLIDAYS, lessonTimes: { morning: DEFAULT_MORNING_LESSONS, afternoon: DEFAULT_AFTERNOON_LESSONS } }));
+            const [settings, setSettings] = useState(() => okuOnbellek('rz_onbellek_ayarlar', { locations: DEFAULT_LOCATIONS, adminPassword: DEFAULT_ADMIN_PASSWORD, siteAccessCode: DEFAULT_SITE_CODE, schoolName: SISTEM_ADI, schoolSubtitle: '', logoDataUrl: '', holidays: DEFAULT_HOLIDAYS, lessonTimes: { morning: DEFAULT_MORNING_LESSONS, afternoon: DEFAULT_AFTERNOON_LESSONS } }));
             const [newHolidayForm, setNewHolidayForm] = useState({ date: '', name: '', block: 'TAM', days: 1 });
             const [activeBlock, setActiveBlock] = useState('SABAH'); // 'SABAH' | 'ÖĞLE'
 
@@ -1090,6 +1105,36 @@
                 setShowDateJump(false);
             };
 
+            // Doğru kod girilmeden hiçbir içerik (öğretmen görünümü dahil) render
+            // edilmez — dışarıdan linki bulan biri uygulamayı hiç göremez.
+            if (girilenKod !== (settings.siteAccessCode || DEFAULT_SITE_CODE)) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center p-5" style={{ background: 'var(--paper)' }}>
+                        <form onSubmit={(e) => {
+                            e.preventDefault();
+                            const deger = e.target.kod.value.trim();
+                            if (deger === (settings.siteAccessCode || DEFAULT_SITE_CODE)) {
+                                try { localStorage.setItem('rz_site_kod', deger); } catch (err) {}
+                                setGirilenKod(deger);
+                                setKilitHata('');
+                            } else {
+                                setKilitHata('Kod hatalı, tekrar deneyin.');
+                                e.target.kod.value = '';
+                            }
+                        }} className="w-full max-w-xs rounded-3xl border p-8 text-center" style={{ borderColor: 'var(--line)', background: 'var(--panel)' }}>
+                            <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ background: 'var(--teal-tint)', color: 'var(--teal-dark)' }}>
+                                <Icon name="lock" className="w-6 h-6" />
+                            </div>
+                            <h1 className="font-display font-semibold text-xl mb-1">{settings.schoolName || SISTEM_ADI}</h1>
+                            <p className="text-xs font-medium mb-5" style={{ color: 'var(--ink-soft)' }}>Devam etmek için erişim kodunu girin.</p>
+                            <input name="kod" autoFocus type="password" placeholder="Erişim kodu" className="w-full px-4 py-3.5 rounded-2xl font-mono text-center text-lg outline-none border-2 mb-2" style={{ borderColor: 'var(--line)', background: 'var(--paper)' }} />
+                            {kilitHata && <p className="text-xs font-semibold mb-3" style={{ color: 'var(--brick)' }}>{kilitHata}</p>}
+                            <button type="submit" className="w-full py-3.5 text-white font-semibold rounded-2xl mt-2" style={{ background: 'var(--teal)' }}>Giriş yap</button>
+                        </form>
+                    </div>
+                );
+            }
+
             return (
                 <div id="app-shell" className={`min-h-screen pb-24 md:pb-10 ${isSnapshotMode ? 'snapshot-active' : ''}`}>
 
@@ -1400,6 +1445,15 @@
                                                     <p className="text-xs font-semibold mb-2" style={{ color: 'var(--ink)' }}>Yönetici şifresi</p>
                                                     <form onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.target); handleSaveSettings({ adminPassword: f.get('adminPassword') || settings.adminPassword }, 'Şifre güncellendi'); }} className="flex gap-2 max-w-md">
                                                         <input name="adminPassword" defaultValue={settings.adminPassword} className="flex-1 min-w-0 px-3.5 py-2.5 rounded-xl font-mono text-sm outline-none border-2" style={{ borderColor: 'var(--line)', background: 'var(--paper)' }} />
+                                                        <button type="submit" className="px-4 py-2.5 rounded-xl text-white font-semibold text-sm shadow-sm shrink-0" style={{ background: 'var(--teal)' }}>Kaydet</button>
+                                                    </form>
+                                                </div>
+
+                                                <div className="pt-3 sm:pt-4 border-t" style={{ borderColor: 'var(--line)' }}>
+                                                    <p className="text-xs font-semibold mb-1" style={{ color: 'var(--ink)' }}>Site erişim kodu</p>
+                                                    <p className="text-[11px] font-medium mb-2" style={{ color: 'var(--ink-soft)' }}>Linki bilen herkesin girmeden önce görmesi gereken paylaşımlı kod. Değiştirirseniz, eski kodu kayıtlı olan tüm cihazlar tekrar bu kodu girmek zorunda kalır.</p>
+                                                    <form onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.target); const yeni = (f.get('siteAccessCode') || '').trim(); if (!yeni) return; handleSaveSettings({ siteAccessCode: yeni }, 'Erişim kodu güncellendi'); }} className="flex gap-2 max-w-md">
+                                                        <input name="siteAccessCode" defaultValue={settings.siteAccessCode || DEFAULT_SITE_CODE} className="flex-1 min-w-0 px-3.5 py-2.5 rounded-xl font-mono text-sm outline-none border-2" style={{ borderColor: 'var(--line)', background: 'var(--paper)' }} />
                                                         <button type="submit" className="px-4 py-2.5 rounded-xl text-white font-semibold text-sm shadow-sm shrink-0" style={{ background: 'var(--teal)' }}>Kaydet</button>
                                                     </form>
                                                 </div>
