@@ -25,7 +25,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700;9..144,800&family=Work+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap');
@@ -344,12 +343,6 @@
             appId: "1:383193041629:web:8eebc09ef5a62197b1e934",
             measurementId: "G-0V13E541LN"
         };
-        // Uygulama kapalıyken bildirim (FCM) için gerekli — Firebase Konsolu >
-        // Proje Ayarları > Cloud Messaging > Web push sertifikaları'ndan
-        // "Anahtar çifti oluştur" ile alınan VAPID anahtarını buraya yapıştırın.
-        // Boş/placeholder kaldığı sürece FCM token kaydı sessizce atlanır —
-        // uygulama açıkken gelen bildirimler bundan etkilenmez.
-        const FCM_VAPID_KEY = "BPRE5XWiG_X9xLtQip1wRiWhxGuX0KQlhCZwNqA-DcH53ssWj6jKC2atpq8iOYFbSCeTG8fGmB2SqmLUUBzTLCE";
         const RZ_AYARLAR_PATH = 'rezervasyon/ayarlar';
         const RZ_BOOKINGS_PATH = 'rezervasyon/onayliRezervasyonlar';
         const RZ_TALEPLER_PATH = 'rezervasyon/talepler';
@@ -395,32 +388,8 @@
             const requestNotifPermission = () => {
                 if (!('Notification' in window)) return;
                 try {
-                    Notification.requestPermission().then(p => { setNotifPermission(p); if (p === 'granted') kaydetFcmToken(); }).catch(() => {});
+                    Notification.requestPermission().then(p => setNotifPermission(p)).catch(() => {});
                 } catch (e) {}
-            };
-
-            // Uygulama TAMAMEN KAPALIYKEN de bildirim düşmesi için (FCM):
-            // Bu cihazın push belirtecini (token) buluta kaydeder; bir Cloud
-            // Function yeni talep geldiğinde bu belirteçlere gerçek push mesajı
-            // gönderir (bkz. functions/index.js). VAPID anahtarı girilmemişse
-            // veya tarayıcı desteklemiyorsa sessizce atlanır.
-            const kaydetFcmToken = async () => {
-                try {
-                    if (!FCM_VAPID_KEY || FCM_VAPID_KEY.indexOf('BURAYA_') === 0) return;
-                    if (!('serviceWorker' in navigator) || !window.firebase || !firebase.messaging) return;
-                    if (firebase.messaging.isSupported && !firebase.messaging.isSupported()) return;
-                    const reg = await navigator.serviceWorker.ready;
-                    const messaging = firebase.messaging();
-                    const fbToken = await messaging.getToken({ vapidKey: FCM_VAPID_KEY, serviceWorkerRegistration: reg });
-                    if (!fbToken) return;
-                    const savedToken = (() => { try { return localStorage.getItem('rz_fcm_token'); } catch (e) { return null; } })();
-                    if (fbToken === savedToken) return;
-                    const db = fbDbRef.current || firebase.database();
-                    await db.ref('rezervasyon/bildirimTokenleri').push({ token: fbToken, ts: Date.now() });
-                    try { localStorage.setItem('rz_fcm_token', fbToken); } catch (e) {}
-                } catch (err) {
-                    console.error('FCM token kaydedilemedi:', err);
-                }
             };
             const [editingCell, setEditingCell] = useState(null);
             const [currentDate, setCurrentDate] = useState(new Date(SISTEM_BASLANGIC));
@@ -554,14 +523,6 @@
                 }
                 // eslint-disable-next-line react-hooks/exhaustive-deps
             }, [taleplerListesi, role, notifPermission]);
-
-            // Sayfa yeniden açıldığında (izin önceki oturumdan zaten verilmişse)
-            // FCM belirtecini tazelemeyi dener — böylece "kapalıyken bildirim"
-            // yalnızca ilk izin anında değil, her admin oturumunda güvenceye alınır.
-            useEffect(() => {
-                if (role === 'admin' && notifPermission === 'granted') kaydetFcmToken();
-                // eslint-disable-next-line react-hooks/exhaustive-deps
-            }, [role, notifPermission]);
 
             const onaylaTalep = (t) => {
                 if (role !== 'admin' || !fbDbRef.current) return;
@@ -1717,9 +1678,6 @@
                                                             <button type="button" onClick={requestNotifPermission} className="px-3.5 py-2 rounded-lg text-white font-semibold text-xs shrink-0" style={{ background: 'var(--teal)' }}>Aç</button>
                                                         )}
                                                     </div>
-                                                    {FCM_VAPID_KEY.indexOf('BURAYA_') === 0 && (
-                                                        <p className="text-[10px] font-medium px-1" style={{ color: 'var(--ink-soft)' }}>Uygulama tamamen kapalıyken de bildirim almak için geliştiricinizin sw.js/functions kurulumunu tamamlaması gerekir.</p>
-                                                    )}
                                                     <div className="flex items-center gap-3 p-3 rounded-xl border" style={{ borderColor: 'var(--line)', background: 'var(--paper)' }}>
                                                         <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--teal-tint)', color: 'var(--teal-dark)' }}>
                                                             <Icon name="smartphone" className="w-4 h-4" />

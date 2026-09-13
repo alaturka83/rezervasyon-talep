@@ -15,7 +15,7 @@
    yalnızca uygulama kabuğunu (HTML/manifest/simgeler) çevrimdışıyken
    de açılabilir tutar.
 ============================================================ */
-const ONBELLEK = 'rezervasyon-talep-kabuk-v3';
+const ONBELLEK = 'rezervasyon-talep-kabuk-v4';
 const KABUK = [
   './index.html',
   './manifest.json',
@@ -56,37 +56,12 @@ self.addEventListener('fetch', e => {
 });
 
 /* ------------------------------------------------------------
-   UYGULAMA TAMAMEN KAPALIYKEN BİLDİRİM (Firebase Cloud Messaging)
-   ------------------------------------------------------------
-   Bir Cloud Function yeni talep geldiğinde bu cihaza DATA-ONLY bir
-   FCM mesajı gönderir (bkz. functions/index.js) — tarayıcı bunu
-   'push' olayı olarak burada teslim eder. Bildirimi biz kendimiz
-   gösteririz; böylece tıklanınca yukarıdaki notificationclick
-   davranışı (odaklan/aç) tam olarak çalışır.
------------------------------------------------------------- */
-self.addEventListener('push', e => {
-  let payload = {};
-  try { payload = e.data ? e.data.json() : {}; } catch (err) {}
-  const veri = payload.data || payload; // FCM data-only mesaj { data: {...} } şeklinde gelir
-  const baslik = veri.title || 'Yeni rezervasyon talebi';
-  const secenekler = {
-    body: veri.body || '',
-    icon: './icon-192.png',
-    badge: './icon-192.png',
-    tag: 'rz-talep',
-    renotify: true
-  };
-  e.waitUntil(self.registration.showNotification(baslik, secenekler));
-});
-
-/* ------------------------------------------------------------
    BİLDİRİME DOKUNULDUĞUNDA (yeni talep bildirimi vb.)
    ------------------------------------------------------------
    Uygulama zaten açık bir sekmede/pencerede ise ona odaklanır;
    değilse yeni bir pencere/sekmede açar. Bildirim, index.html
-   içindeki reg.showNotification(...) çağrısıyla veya yukarıdaki
-   'push' olayıyla oluşturulur — burada yalnızca tıklama davranışı
-   yönetilir.
+   içindeki reg.showNotification(...) çağrısıyla oluşturulur —
+   burada yalnızca tıklama davranışı yönetilir.
 ------------------------------------------------------------ */
 self.addEventListener('notificationclick', e => {
   e.notification.close();
