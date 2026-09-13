@@ -1963,7 +1963,7 @@
                                         <div className="flex justify-between items-start mb-5">
                                             <div>
                                                 <h3 className="font-display font-semibold text-xl">Yeni kayıt</h3>
-                                                <p className="text-xs font-medium mt-0.5" style={{ color: 'var(--ink-soft)' }}>{editingCell?.fullName} · {editingCell?.display}</p>
+                                                <p className="text-xs font-medium mt-0.5" style={{ color: 'var(--ink-soft)' }}>{editingCell?.dateStr && `${formatDateStrDisplay(editingCell.dateStr)} ${new Date(editingCell.dateStr + 'T00:00:00').toLocaleDateString('tr-TR', { weekday: 'long' })}`}</p>
                                             </div>
                                             <button onClick={() => setEditingCell(null)} className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: 'var(--paper-2)' }}>
                                                 <Icon name="x" className="w-5 h-5" />
@@ -2022,7 +2022,7 @@
                                         <div className="flex justify-between items-start mb-5">
                                             <div>
                                                 <h3 className="font-display font-semibold text-xl">Rezervasyon Talebi</h3>
-                                                <p className="text-xs font-medium mt-0.5" style={{ color: 'var(--ink-soft)' }}>{activeLocation} · {editingCell?.fullName} · {editingCell?.display}</p>
+                                                <p className="text-xs font-medium mt-0.5" style={{ color: 'var(--ink-soft)' }}>{activeLocation} · {editingCell?.dateStr && `${formatDateStrDisplay(editingCell.dateStr)} ${new Date(editingCell.dateStr + 'T00:00:00').toLocaleDateString('tr-TR', { weekday: 'long' })}`}</p>
                                             </div>
                                             <button onClick={() => setEditingCell(null)} className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: 'var(--paper-2)' }}>
                                                 <Icon name="x" className="w-5 h-5" />
