@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Rezervasyon Talebi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&family=Work+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<style>
+:root{
+  --ink:#20261F; --ink-soft:#5E675B; --paper:#F2F1E7; --paper-2:#E9E5D3; --panel:#FCFBF6;
+  --line:#C7C0A4; --line-strong:#8F8563; --teal:#4FB6AC; --teal-dark:#2D7D74; --teal-tint:#DFF4F1;
+  --ochre:#AE7E2B; --ochre-tint:#F1E3C3; --brick:#9E3D31; --brick-tint:#F3DEDA; --green:#3F8F5F; --green-tint:#DCEEDD;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{background:var(--paper);}
+body{margin:0;font-family:'Work Sans',sans-serif;color:var(--ink);font-size:14px;overscroll-behavior-y:none;}
+.disp{font-family:'Fraunces',serif;}
+.wrap{max-width:720px;margin:0 auto;padding:14px 14px 100px;}
+
+.header{background:var(--ink);color:#fff;border-radius:16px;padding:16px 16px;display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+.header .logo{width:42px;height:42px;border-radius:12px;object-fit:cover;flex-shrink:0;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;}
+.header .h-title{font-family:'Fraunces',serif;font-size:17px;font-weight:700;line-height:1.2;}
+.header .h-sub{font-size:11.5px;opacity:.75;margin-top:2px;}
+.header .cloud-dot{width:7px;height:7px;border-radius:50%;background:var(--teal);display:inline-block;margin-right:5px;}
+.header .cloud-dot.hata{background:var(--brick);}
+
+.mekan-tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;margin-bottom:12px;scrollbar-width:none;}
+.mekan-tabs::-webkit-scrollbar{display:none;}
+.mekan-tabs button{flex:none;border:1.5px solid var(--line);background:var(--panel);color:var(--ink);font-weight:700;font-size:13px;padding:9px 16px;border-radius:11px;cursor:pointer;white-space:nowrap;}
+.mekan-tabs button.active{background:var(--teal-dark);color:#fff;border-color:var(--teal-dark);}
+
+.week-nav{display:flex;align-items:center;justify-content:space-between;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin-bottom:14px;}
+.week-nav button{border:none;background:var(--paper-2);width:34px;height:34px;border-radius:9px;font-size:16px;font-weight:800;color:var(--teal-dark);cursor:pointer;}
+.week-nav button:disabled{opacity:.35;cursor:default;}
+.week-nav .lbl{font-weight:700;font-size:13px;color:var(--ink);}
+
+.day-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;margin-bottom:10px;overflow:hidden;}
+.day-head{padding:10px 14px;background:var(--paper-2);display:flex;align-items:baseline;justify-content:space-between;}
+.day-head .d-name{font-weight:800;font-size:13px;color:var(--ink);}
+.day-head .d-date{font-size:11.5px;color:var(--ink-soft);font-weight:600;}
+.day-holiday{padding:10px 14px;font-size:12.5px;color:var(--brick);font-weight:700;background:var(--brick-tint);}
+
+.block-label{font-size:10px;font-weight:800;letter-spacing:.5px;color:var(--ink-soft);padding:9px 14px 4px;}
+.slot-row{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-top:1px solid var(--line);gap:10px;}
+.slot-row .s-lbl{font-size:12.5px;font-weight:700;color:var(--ink);flex-shrink:0;width:88px;}
+.slot-row .s-time{font-size:10.5px;color:var(--ink-soft);font-weight:500;}
+.slot-pill{flex:1;text-align:right;}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:9px;font-size:11.5px;font-weight:800;border:none;cursor:pointer;}
+.pill.musait{background:var(--teal-tint);color:var(--teal-dark);}
+.pill.musait:active{transform:scale(0.96);}
+.pill.dolu{background:var(--paper-2);color:var(--ink-soft);cursor:default;}
+.pill.beklemede{background:var(--ochre-tint);color:var(--ochre);cursor:default;}
+.pill.beklemede.benim{background:var(--ochre);color:#fff;}
+
+.fab{position:fixed;right:16px;bottom:16px;z-index:400;height:52px;border-radius:26px;background:var(--teal-dark);color:#fff;border:none;cursor:pointer;box-shadow:0 6px 18px rgba(20,25,40,.25);display:flex;align-items:center;gap:8px;padding:0 18px;font-weight:800;font-size:13px;}
+.fab .badge{background:var(--brick);color:#fff;border-radius:20px;min-width:18px;height:18px;padding:0 4px;font-size:10.5px;display:flex;align-items:center;justify-content:center;}
+
+.overlay{position:fixed;inset:0;background:rgba(32,38,31,0.55);backdrop-filter:blur(4px);z-index:800;display:flex;align-items:flex-end;justify-content:center;}
+@media (min-width:640px){ .overlay{align-items:center;} }
+.sheet{background:var(--panel);width:100%;max-width:480px;border-radius:22px 22px 0 0;padding:22px 20px calc(20px + env(safe-area-inset-bottom));max-height:88vh;overflow-y:auto;}
+@media (min-width:640px){ .sheet{border-radius:22px;} }
+.sheet h3{font-family:'Fraunces',serif;font-size:18px;font-weight:700;margin:0 0 4px;}
+.sheet .sub{font-size:12.5px;color:var(--ink-soft);font-weight:600;margin-bottom:16px;}
+.field{margin-bottom:12px;}
+.field label{display:block;font-size:10.5px;font-weight:800;color:var(--ink-soft);letter-spacing:.3px;margin-bottom:5px;}
+.field input,.field textarea{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:11px 12px;font-size:15px;font-family:inherit;color:var(--ink);background:#fff;outline:none;}
+.field textarea{resize:vertical;min-height:60px;}
+.btn-row{display:flex;gap:8px;margin-top:16px;}
+.btn{flex:1;padding:13px;border-radius:12px;font-weight:800;font-size:13.5px;border:none;cursor:pointer;}
+.btn.primary{background:var(--teal-dark);color:#fff;}
+.btn.ghost{background:var(--paper-2);color:var(--ink);}
+.err-box{background:var(--brick-tint);color:var(--brick);font-size:12px;font-weight:700;padding:10px 12px;border-radius:10px;margin-bottom:12px;}
+.ok-box{background:var(--green-tint);color:var(--green);font-size:13px;font-weight:700;padding:14px;border-radius:12px;text-align:center;}
+
+.talep-item{border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:8px;}
+.talep-item .t-loc{font-weight:800;font-size:13px;}
+.talep-item .t-date{font-size:11.5px;color:var(--ink-soft);font-weight:600;margin-bottom:6px;}
+.durum-pill{display:inline-block;padding:3px 9px;border-radius:8px;font-size:10.5px;font-weight:800;}
+.durum-pill.bekliyor{background:var(--ochre-tint);color:var(--ochre);}
+.durum-pill.onaylandi{background:var(--green-tint);color:var(--green);}
+.durum-pill.reddedildi{background:var(--brick-tint);color:var(--brick);}
+
+.msg{text-align:center;padding:40px 16px;color:var(--ink-soft);font-size:13px;font-weight:600;}
+.footnote{text-align:center;font-size:11px;color:var(--ink-soft);font-weight:500;margin-top:18px;padding:0 20px;line-height:1.5;}
+</style>
+</head>
+<body>
+<div id="app" class="wrap"><div class="msg">Yükleniyor…</div></div>
+
+<script>
+// ---- BULUT BAĞLANTISI (Firebase Realtime Database + Authentication) ----
+// Rezervasyon sisteminin bağımsız Firebase projesi — idare uygulamasıyla aynı proje.
+const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyBOxPxve4zU-5zE14pWiaNFWlF-Rc6I6cA",
+    authDomain: "rezervasyon1453.firebaseapp.com",
+    databaseURL: "https://rezervasyon1453-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "rezervasyon1453",
+    storageBucket: "rezervasyon1453.firebasestorage.app",
+    messagingSenderId: "383193041629",
+    appId: "1:383193041629:web:8eebc09ef5a62197b1e934",
+    measurementId: "G-0V13E541LN"
+};
+const RZ_AYARLAR_PATH = 'rezervasyon/ayarlar';
+const RZ_BOOKINGS_PATH = 'rezervasyon/onayliRezervasyonlar';
+const RZ_TALEPLER_PATH = 'rezervasyon/talepler';
+
+firebase.initializeApp(FIREBASE_CONFIG);
+const fbDb = firebase.database();
+const fbAuth = firebase.auth();
+
+// ---- SABİTLER (idare uygulamasıyla birebir aynı — kimlik/tarih formatları eşleşsin) ----
+const SISTEM_ADI = "İdare Rezervasyon Sistemi";
+const SISTEM_BASLANGIC = new Date(2026, 8, 14); SISTEM_BASLANGIC.setHours(0, 0, 0, 0);
+const SISTEM_BITIS = new Date(2027, 5, 25); SISTEM_BITIS.setHours(0, 0, 0, 0);
+const GUN_ADLARI = ['PAZARTESİ', 'SALI', 'ÇARŞAMBA', 'PERŞEMBE', 'CUMA'];
+const DAY_LABELS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma'];
+const DEFAULT_LOCATIONS = ["Konferans Salonu", "Kütüphane"];
+const DEFAULT_MORNING_LESSONS = [
+    { label: "1. Ders", start: "08:10", end: "08:45", block: "SABAH" },
+    { label: "2. Ders", start: "08:55", end: "09:30", block: "SABAH" },
+    { label: "3. Ders", start: "09:40", end: "10:15", block: "SABAH" },
+    { label: "4. Ders", start: "10:25", end: "11:00", block: "SABAH" },
+    { label: "5. Ders", start: "11:10", end: "11:45", block: "SABAH" },
+    { label: "6. Ders", start: "11:55", end: "12:30", block: "SABAH" },
+];
+const DEFAULT_AFTERNOON_LESSONS = [
+    { label: "1. Ders", start: "13:00", end: "13:35", block: "ÖĞLE" },
+    { label: "2. Ders", start: "13:45", end: "14:20", block: "ÖĞLE" },
+    { label: "3. Ders", start: "14:30", end: "15:05", block: "ÖĞLE" },
+    { label: "4. Ders", start: "15:15", end: "15:50", block: "ÖĞLE" },
+    { label: "5. Ders", start: "16:00", end: "16:35", block: "ÖĞLE" },
+    { label: "6. Ders", start: "16:45", end: "17:20", block: "ÖĞLE" },
+];
+
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function slugify(str) { return (str || "").toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() || "yer"; }
+function toDateStrLocal(d) { const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0'); return `${y}-${m}-${day}`; }
+function normalizeDate(d) { const n = new Date(d); n.setHours(0, 0, 0, 0); return n; }
+function isInSystemRange(d) { const n = normalizeDate(d); return n.getTime() >= SISTEM_BASLANGIC.getTime() && n.getTime() <= SISTEM_BITIS.getTime(); }
+function bookingDocId(location, dateStr, block, label) { return `${slugify(location)}-${dateStr}-${block}-${label}`.replace(/\s+/g, '-'); }
+function formatDateStrDisplay(s) { if (!s) return ''; const [y, m, d] = s.split('-'); return `${d}.${m}.${y}`; }
+function getDayHolidays(list, dateStr) { return (list || []).filter(h => h.date === dateStr); }
+function pickHolidayForBlock(dayHolidays, block) {
+    if (!dayHolidays || !dayHolidays.length) return null;
+    return dayHolidays.find(h => h.block === 'TAM') || dayHolidays.find(h => h.block === block) || null;
+}
+
+// ---- DURUM ----
+const state = {
+    ayarlar: { locations: DEFAULT_LOCATIONS, schoolName: SISTEM_ADI, schoolSubtitle: '', logoDataUrl: '', holidays: [], lessonTimes: { morning: DEFAULT_MORNING_LESSONS, afternoon: DEFAULT_AFTERNOON_LESSONS } },
+    bookings: [],
+    talepler: {},
+    aktifMekan: null,
+    haftaBaslangic: null, // Pazartesi
+    cloudStatus: 'baglaniyor',
+    modalSlot: null, // { location, date, dateDisplay, dayName, block, label, time }
+    gonderiliyor: false,
+    gonderHata: '',
+    taleplerimAcik: false,
+};
+
+function benimTaleplerim() { try { return JSON.parse(localStorage.getItem('rz_talep_kayitlarim') || '[]'); } catch (e) { return []; } }
+function benimTaleplerimeEkle(kayit) { const l = benimTaleplerim(); l.unshift(kayit); localStorage.setItem('rz_talep_kayitlarim', JSON.stringify(l.slice(0, 60))); }
+function kayitliIsim() { return localStorage.getItem('rz_talep_isim') || ''; }
+
+function mondayOf(d) { const c = new Date(d); const day = c.getDay(); const diff = c.getDate() - day + (day === 0 ? -6 : 1); c.setDate(diff); c.setHours(0, 0, 0, 0); return c; }
+
+function baslat() {
+    const bugun = new Date();
+    const baslangicHafta = mondayOf(bugun.getTime() < SISTEM_BASLANGIC.getTime() ? SISTEM_BASLANGIC : (bugun.getTime() > SISTEM_BITIS.getTime() ? SISTEM_BASLANGIC : bugun));
+    state.haftaBaslangic = baslangicHafta;
+    render();
+
+    fbAuth.onAuthStateChanged(user => {
+        if (user) {
+            dinlemeyeBasla();
+        } else {
+            fbAuth.signInAnonymously().catch(err => { console.error('Giriş hatası:', err); state.cloudStatus = 'hata'; render(); });
+        }
+    });
+}
+
+function dinlemeyeBasla() {
+    fbDb.ref(RZ_AYARLAR_PATH).on('value', snap => {
+        const val = snap.val();
+        if (val) state.ayarlar = { ...state.ayarlar, ...val };
+        if (!state.aktifMekan) state.aktifMekan = (state.ayarlar.locations || DEFAULT_LOCATIONS)[0];
+        state.cloudStatus = 'senkron';
+        render();
+    }, err => { console.error(err); state.cloudStatus = 'hata'; render(); });
+
+    fbDb.ref(RZ_BOOKINGS_PATH).on('value', snap => {
+        const val = snap.val();
+        state.bookings = Array.isArray(val) ? val : (val ? Object.values(val) : []);
+        render();
+    }, err => console.error(err));
+
+    fbDb.ref(RZ_TALEPLER_PATH).on('value', snap => {
+        state.talepler = snap.val() || {};
+        render();
+    }, err => console.error(err));
+}
+
+function haftaGeriGit() {
+    const yeni = new Date(state.haftaBaslangic); yeni.setDate(yeni.getDate() - 7);
+    if (yeni.getTime() + 4 * 86400000 < SISTEM_BASLANGIC.getTime()) return;
+    state.haftaBaslangic = yeni; render();
+}
+function haftaIleriGit() {
+    const yeni = new Date(state.haftaBaslangic); yeni.setDate(yeni.getDate() + 7);
+    if (yeni.getTime() > SISTEM_BITIS.getTime()) return;
+    state.haftaBaslangic = yeni; render();
+}
+
+function slotDurumu(location, dateStr, block, label) {
+    const id = bookingDocId(location, dateStr, block, label);
+    const dolu = state.bookings.find(b => b.id === id);
+    if (dolu) return { tip: 'dolu', bilgi: dolu };
+    const taleplerArr = Object.entries(state.talepler).map(([key, t]) => ({ ...t, key }));
+    const bekleyen = taleplerArr.find(t => t.durum === 'bekliyor' && bookingDocId(t.location, t.date, t.block, t.lessonLabel) === id);
+    if (bekleyen) {
+        const benim = benimTaleplerim().some(k => k.key === bekleyen.key);
+        return { tip: 'beklemede', bilgi: bekleyen, benim };
+    }
+    return { tip: 'musait' };
+}
+
+function slotAc(location, date, dateDisplay, dayName, block, label, time) {
+    state.modalSlot = { location, date, dateDisplay, dayName, block, label, time };
+    state.gonderHata = '';
+    render();
+}
+function modalKapat() { state.modalSlot = null; state.gonderiliyor = false; state.gonderHata = ''; render(); }
+
+function talepGonder(isim, aktivite) {
+    isim = (isim || '').trim();
+    if (!isim) { state.gonderHata = 'Lütfen adınızı ve soyadınızı yazın.'; render(); return; }
+    const s = state.modalSlot;
+    if (!s) return;
+    const durum = slotDurumu(s.location, s.date, s.block, s.label);
+    if (durum.tip !== 'musait') { state.gonderHata = 'Bu saat için durum değişti, lütfen sayfayı kontrol edin.'; render(); return; }
+
+    state.gonderiliyor = true; render();
+    localStorage.setItem('rz_talep_isim', isim);
+    const kayit = { location: s.location, date: s.date, lessonLabel: s.label, block: s.block, teacher: isim, activity: (aktivite || '').trim(), durum: 'bekliyor', olusturmaZamani: Date.now() };
+    fbDb.ref(RZ_TALEPLER_PATH).push(kayit).then(ref => {
+        benimTaleplerimeEkle({ key: ref.key, location: s.location, date: s.date, lessonLabel: s.label });
+        state.gonderiliyor = false;
+        state.modalSlot = null;
+        state.gonderHata = '';
+        render();
+    }).catch(err => {
+        console.error(err);
+        state.gonderiliyor = false;
+        state.gonderHata = 'Gönderilemedi, internet bağlantınızı kontrol edip tekrar deneyin.';
+        render();
+    });
+}
+
+// ---- GÖRÜNÜM ----
+function render() {
+    const app = document.getElementById('app');
+    const a = state.ayarlar;
+    const locations = a.locations && a.locations.length ? a.locations : DEFAULT_LOCATIONS;
+    if (!state.aktifMekan) state.aktifMekan = locations[0];
+
+    const gunler = Array.from({ length: 5 }, (_, i) => {
+        const d = new Date(state.haftaBaslangic); d.setDate(d.getDate() + i);
+        const dateStr = toDateStrLocal(d);
+        return { name: GUN_ADLARI[i], display: DAY_LABELS[i], dateStr, dateDisplay: formatDateStrDisplay(dateStr), valid: isInSystemRange(d), holidays: getDayHolidays(a.holidays, dateStr) };
+    });
+
+    const ilkGun = gunler[0], sonGun = gunler[4];
+    const haftaLbl = `${ilkGun.dateDisplay} – ${sonGun.dateDisplay}`;
+    const oncekiKapali = new Date(state.haftaBaslangic).getTime() + 4 * 86400000 - 7 * 86400000 < SISTEM_BASLANGIC.getTime();
+    const sonrakiKapali = new Date(state.haftaBaslangic).getTime() + 7 * 86400000 > SISTEM_BITIS.getTime();
+
+    const morning = a.lessonTimes?.morning || DEFAULT_MORNING_LESSONS;
+    const afternoon = a.lessonTimes?.afternoon || DEFAULT_AFTERNOON_LESSONS;
+
+    const benimListe = benimTaleplerim();
+    const taleplerArr = Object.entries(state.talepler).map(([key, t]) => ({ ...t, key }));
+    const benimKayitlar = benimListe.map(k => {
+        const guncel = taleplerArr.find(t => t.key === k.key);
+        return guncel ? { ...guncel } : { ...k, durum: 'bilinmiyor' };
+    }).slice(0, 20);
+
+    let html = '';
+    html += `<div class="header">
+        <div class="logo">${a.logoDataUrl ? `<img src="${a.logoDataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:12px;">` : esc((a.schoolName || SISTEM_ADI).charAt(0))}</div>
+        <div style="flex:1;min-width:0;">
+            <div class="h-title">${esc(a.schoolName || SISTEM_ADI)}</div>
+            <div class="h-sub"><span class="cloud-dot ${state.cloudStatus === 'hata' ? 'hata' : ''}"></span>Ortak Alan Rezervasyon Talebi ${state.cloudStatus === 'hata' ? '· bağlantı hatası' : ''}</div>
+        </div>
+    </div>`;
+
+    html += `<div class="mekan-tabs">${locations.map(loc => `<button data-action="mekan" data-mekan="${esc(loc)}" class="${loc === state.aktifMekan ? 'active' : ''}">${esc(loc)}</button>`).join('')}</div>`;
+
+    html += `<div class="week-nav">
+        <button data-action="prev-week" ${oncekiKapali ? 'disabled' : ''}>‹</button>
+        <span class="lbl">${haftaLbl}</span>
+        <button data-action="next-week" ${sonrakiKapali ? 'disabled' : ''}>›</button>
+    </div>`;
+
+    gunler.forEach(g => {
+        html += `<div class="day-card">`;
+        html += `<div class="day-head"><span class="d-name">${g.name}</span><span class="d-date">${g.dateDisplay}</span></div>`;
+        if (!g.valid) {
+            html += `<div class="day-holiday">Sistem tarih aralığı dışında</div></div>`;
+            return;
+        }
+        [['SABAH', morning], ['ÖĞLE', afternoon]].forEach(([blok, dersler]) => {
+            const tatil = pickHolidayForBlock(g.holidays, blok);
+            html += `<div class="block-label">${blok === 'SABAH' ? 'SABAHÇI GRUBU' : 'ÖĞLENCİ GRUBU'}</div>`;
+            if (tatil) {
+                html += `<div class="day-holiday" style="margin:0 14px 8px;border-radius:8px;">${esc(tatil.name)} — bu blokta rezervasyon alınmıyor</div>`;
+                return;
+            }
+            dersler.forEach(ders => {
+                const durum = slotDurumu(state.aktifMekan, g.dateStr, blok, ders.label);
+                let pillHtml = '';
+                if (durum.tip === 'musait') {
+                    pillHtml = `<button class="pill musait" data-action="slot-ac" data-date="${g.dateStr}" data-block="${blok}" data-label="${esc(ders.label)}">Müsait — Talep gönder</button>`;
+                } else if (durum.tip === 'beklemede') {
+                    pillHtml = `<span class="pill beklemede ${durum.benim ? 'benim' : ''}">Beklemede${durum.benim ? ' (benim)' : ' — ' + esc(durum.bilgi.teacher)}</span>`;
+                } else {
+                    pillHtml = `<span class="pill dolu">Dolu — ${esc(durum.bilgi.teacher)}</span>`;
+                }
+                html += `<div class="slot-row">
+                    <div><div class="s-lbl">${esc(ders.label)}</div><div class="s-time">${ders.start}–${ders.end}</div></div>
+                    <div class="slot-pill">${pillHtml}</div>
+                </div>`;
+            });
+        });
+        html += `</div>`;
+    });
+
+    html += `<div class="footnote">Gönderdiğiniz talepler yönetici onayından sonra kesinleşir. Onay durumunu "Taleplerim" üzerinden takip edebilirsiniz.</div>`;
+
+    html += `<button class="fab" data-action="taleplerim-ac">Taleplerim ${benimKayitlar.length ? `<span class="badge">${benimKayitlar.length}</span>` : ''}</button>`;
+
+    // Talep modalı
+    if (state.modalSlot) {
+        const s = state.modalSlot;
+        html += `<div class="overlay" data-action="overlay-kapat">
+            <div class="sheet" onclick="event.stopPropagation()">
+                <h3>Rezervasyon Talebi</h3>
+                <div class="sub">${esc(s.location)} · ${s.dateDisplay} · ${esc(s.label)} (${s.block})</div>
+                ${state.gonderHata ? `<div class="err-box">${esc(state.gonderHata)}</div>` : ''}
+                <div class="field"><label>Ad Soyad</label><input type="text" id="inpIsim" value="${esc(kayitliIsim())}" placeholder="Adınız ve soyadınız"></div>
+                <div class="field"><label>Ne için kullanacaksınız? (opsiyonel)</label><textarea id="inpAktivite" placeholder="Örn: Veli toplantısı"></textarea></div>
+                <div class="btn-row">
+                    <button class="btn ghost" data-action="overlay-kapat">Vazgeç</button>
+                    <button class="btn primary" data-action="talep-gonder" ${state.gonderiliyor ? 'disabled' : ''}>${state.gonderiliyor ? 'Gönderiliyor…' : 'Talebi gönder'}</button>
+                </div>
+            </div>
+        </div>`;
+    }
+
+    // Taleplerim paneli
+    if (state.taleplerimAcik) {
+        html += `<div class="overlay" data-action="taleplerim-kapat">
+            <div class="sheet" onclick="event.stopPropagation()">
+                <h3>Taleplerim</h3>
+                <div class="sub">Bu cihazdan gönderdiğiniz talepler</div>
+                ${benimKayitlar.length === 0 ? '<div class="msg">Henüz bir talep göndermediniz.</div>' : benimKayitlar.map(t => `
+                    <div class="talep-item">
+                        <div class="t-loc">${esc(t.location)}</div>
+                        <div class="t-date">${formatDateStrDisplay(t.date)} · ${esc(t.lessonLabel)}</div>
+                        <span class="durum-pill ${t.durum}">${t.durum === 'bekliyor' ? 'Onay bekliyor' : t.durum === 'onaylandi' ? 'Onaylandı' : t.durum === 'reddedildi' ? 'Reddedildi' : 'Bilinmiyor'}</span>
+                    </div>
+                `).join('')}
+                <div class="btn-row"><button class="btn ghost" data-action="taleplerim-kapat">Kapat</button></div>
+            </div>
+        </div>`;
+    }
+
+    app.innerHTML = html;
+}
+
+document.getElementById('app').addEventListener('click', e => {
+    const el = e.target.closest('[data-action]');
+    if (!el) return;
+    const action = el.dataset.action;
+    if (action === 'mekan') { state.aktifMekan = el.dataset.mekan; render(); }
+    else if (action === 'prev-week') haftaGeriGit();
+    else if (action === 'next-week') haftaIleriGit();
+    else if (action === 'slot-ac') {
+        const dateStr = el.dataset.date, block = el.dataset.block, label = el.dataset.label;
+        const ders = (block === 'SABAH' ? (state.ayarlar.lessonTimes?.morning || DEFAULT_MORNING_LESSONS) : (state.ayarlar.lessonTimes?.afternoon || DEFAULT_AFTERNOON_LESSONS)).find(x => x.label === label);
+        const idx = gunIndexFromDateStr(dateStr);
+        slotAc(state.aktifMekan, dateStr, formatDateStrDisplay(dateStr), idx >= 0 ? DAY_LABELS[idx] : '', block, label, ders ? `${ders.start}–${ders.end}` : '');
+    }
+    else if (action === 'overlay-kapat') modalKapat();
+    else if (action === 'talep-gonder') {
+        const isim = document.getElementById('inpIsim').value;
+        const aktivite = document.getElementById('inpAktivite').value;
+        talepGonder(isim, aktivite);
+    }
+    else if (action === 'taleplerim-ac') { state.taleplerimAcik = true; render(); }
+    else if (action === 'taleplerim-kapat') { state.taleplerimAcik = false; render(); }
+});
+
+function gunIndexFromDateStr(dateStr) {
+    const gunler = Array.from({ length: 5 }, (_, i) => { const d = new Date(state.haftaBaslangic); d.setDate(d.getDate() + i); return toDateStrLocal(d); });
+    return gunler.indexOf(dateStr);
+}
+
+baslat();
+</script>
+</body>
+</html>
