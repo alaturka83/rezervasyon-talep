@@ -793,14 +793,17 @@
                 const start = new Date(bulkForm.startDate); start.setHours(0, 0, 0, 0);
                 const end = new Date(bulkForm.endDate); end.setHours(0, 0, 0, 0);
                 const newOnes = [];
+                let tatilAtlanan = 0;
                 for (let d = new Date(Math.max(start, SISTEM_BASLANGIC)); d.getTime() <= Math.min(end, SISTEM_BITIS); d.setDate(d.getDate() + 1)) {
                     const jsDay = d.getDay(); // 1=Pzt ... 5=Cuma
                     if (!bulkForm.days.includes(jsDay)) continue;
                     if (!isInSystemRange(d)) continue;
                     const dateStr = toDateStrLocal(d);
+                    const dayHolidays = getDayHolidays(settings.holidays, dateStr);
                     for (const key of bulkForm.periods) {
                         const period = ALL_PERIODS.find(p => `${p.block}-${p.label}` === key);
                         if (!period) continue;
+                        if (pickHolidayForBlock(dayHolidays, period.block)) { tatilAtlanan++; continue; }
                         const id = bookingDocId(loc, dateStr, period.block, period.label);
                         newOnes.push({
                             id, location: loc, date: dateStr, lessonLabel: period.label, block: period.block,
@@ -809,7 +812,7 @@
                     }
                 }
                 if (newOnes.length === 0) {
-                    setBulkResult('Seçilen aralıkta uygun gün/saat bulunamadı.');
+                    setBulkResult(tatilAtlanan > 0 ? 'Seçilen aralıktaki tüm saatler resmi tatile denk geldiği için hiçbir kayıt oluşturulmadı.' : 'Seçilen aralıkta uygun gün/saat bulunamadı.');
                     return;
                 }
                 const conflicts = newOnes
@@ -819,7 +822,7 @@
                     const map = new Map(bookings.map(b => [b.id, b]));
                     newOnes.forEach(nb => map.set(nb.id, nb));
                     commitBookings(Array.from(map.values()));
-                    setBulkResult(`${newOnes.length} ders saati başarıyla oluşturuldu / güncellendi.${conflicts.length ? ` (${conflicts.length} çakışan kaydın üzerine yazıldı.)` : ''}`);
+                    setBulkResult(`${newOnes.length} ders saati başarıyla oluşturuldu / güncellendi.${conflicts.length ? ` (${conflicts.length} çakışan kaydın üzerine yazıldı.)` : ''}${tatilAtlanan > 0 ? ` (${tatilAtlanan} saat resmi tatile denk geldiği için atlandı.)` : ''}`);
                     setConflictDialog(null);
                 };
                 if (conflicts.length > 0) {
@@ -869,8 +872,10 @@
                     if (!weekdaySet.has(d.getDay())) continue;
                     if (!isInSystemRange(d)) continue;
                     const dateStr = toDateStrLocal(d);
+                    const dayHolidays = getDayHolidays(settings.holidays, dateStr);
                     periodSet.forEach(pk => {
                         const [block, label] = pk.split('|');
+                        if (pickHolidayForBlock(dayHolidays, block)) return;
                         const id = bookingDocId(location, dateStr, block, label);
                         newOnes.push({ id, location, date: dateStr, lessonLabel: label, block, teacher: newTeacher, activity: newActivity, timestamp: Date.now() });
                     });
