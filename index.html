@@ -201,6 +201,9 @@
                 case 'search': return <svg {...common}><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>;
                 case 'bell': return <svg {...common}><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>;
                 case 'check': return <svg {...common}><polyline points="20 6 9 17 4 12"></polyline></svg>;
+                case 'download': return <svg {...common}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>;
+                case 'upload': return <svg {...common}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>;
+                case 'smartphone': return <svg {...common}><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>;
                 default: return null;
             }
         };
@@ -333,9 +336,13 @@
         const RZ_TALEPLER_PATH = 'rezervasyon/talepler';
 
         function App() {
-            const [role, setRole] = useState('teacher'); // 'teacher' = Öğretmen/İzleyici (varsayılan) | 'admin' = Yönetici
+            // Yönetici oturumu localStorage'da tutulur — kısayoldan/ana ekrandan her
+            // açılışta şifre sorulmaması için "Çıkış yap" ile temizlenene kadar kalıcıdır.
+            const [role, setRole] = useState(() => {
+                try { return localStorage.getItem('rz_role') === 'admin' ? 'admin' : 'teacher'; } catch (e) { return 'teacher'; }
+            }); // 'teacher' = Öğretmen/İzleyici (varsayılan) | 'admin' = Yönetici
             const [settings, setSettings] = useState({ locations: DEFAULT_LOCATIONS, adminPassword: DEFAULT_ADMIN_PASSWORD, schoolName: SISTEM_ADI, schoolSubtitle: '', logoDataUrl: '', holidays: DEFAULT_HOLIDAYS, lessonTimes: { morning: DEFAULT_MORNING_LESSONS, afternoon: DEFAULT_AFTERNOON_LESSONS } });
-            const [newHolidayForm, setNewHolidayForm] = useState({ date: '', name: '', block: 'TAM' });
+            const [newHolidayForm, setNewHolidayForm] = useState({ date: '', name: '', block: 'TAM', days: 1 });
             const [activeBlock, setActiveBlock] = useState('SABAH'); // 'SABAH' | 'ÖĞLE'
 
             // Ders saatleri: Ayarlar > Ders Saatleri sekmesinden güncellenebilir; tüm
@@ -671,6 +678,7 @@
                 e.preventDefault();
                 const pass = e.target.password.value;
                 if (pass === settings.adminPassword) {
+                    try { localStorage.setItem('rz_role', 'admin'); } catch (e) {}
                     setRole('admin'); setShowAuthModal(false); setAuthError(''); setShowMobileMenu(false);
                 } else {
                     setAuthError('Şifre hatalı, tekrar deneyin.'); e.target.password.value = "";
@@ -678,6 +686,7 @@
             };
 
             const handleLogout = () => {
+                try { localStorage.removeItem('rz_role'); } catch (e) {}
                 setEditingCell(null); setRole('teacher'); setShowAuthModal(false); setAuthError(''); setShowSettingsModal(false); setShowMobileMenu(false);
             };
 
@@ -749,12 +758,23 @@
             };
 
             const handleAddHoliday = () => {
-                const { date, name, block } = newHolidayForm;
+                const { date, name, block, days } = newHolidayForm;
                 if (!date || !name.trim()) return;
+                const dayCount = Math.max(1, Math.min(60, parseInt(days, 10) || 1));
                 const list = settings.holidays || [];
-                const filtered = list.filter(h => !(h.date === date && h.block === block));
-                handleSaveSettings({ holidays: [...filtered, { date, name: name.trim(), block }].sort((a, b) => a.date < b.date ? -1 : 1) }, 'Tatil eklendi');
-                setNewHolidayForm({ date: '', name: '', block: 'TAM' });
+                // Başlangıç tarihinden itibaren "gün sayısı" kadar ardışık günü otomatik oluşturur
+                // (ör. 5 günlük ara tatil için başlangıç + gün sayısı yeterli, tek tek eklemeye gerek kalmaz).
+                const start = new Date(date + 'T00:00:00');
+                const newEntries = [];
+                for (let i = 0; i < dayCount; i++) {
+                    const d = new Date(start);
+                    d.setDate(d.getDate() + i);
+                    newEntries.push({ date: toDateStrLocal(d), name: name.trim(), block });
+                }
+                const newKeys = new Set(newEntries.map(e => `${e.date}-${e.block}`));
+                const filtered = list.filter(h => !newKeys.has(`${h.date}-${h.block}`));
+                handleSaveSettings({ holidays: [...filtered, ...newEntries].sort((a, b) => a.date < b.date ? -1 : 1) }, dayCount > 1 ? `${dayCount} günlük tatil eklendi` : 'Tatil eklendi');
+                setNewHolidayForm({ date: '', name: '', block: 'TAM', days: 1 });
             };
 
             const handleRemoveHoliday = (date, block) => {
@@ -1066,6 +1086,15 @@
                         </div>
                     )}
 
+                    {/* ============ KURS OLUŞTURMA SONUCU (POPUP, 3 sn sonra otomatik kapanır) ============ */}
+                    {bulkResult && (
+                        <div className="no-snapshot fixed inset-0 z-[950] flex items-center justify-center p-5 pointer-events-none">
+                            <div className="pointer-events-auto max-w-sm w-full rounded-2xl px-5 py-4 shadow-2xl text-center" style={{ background: 'var(--ink)', color: 'white' }}>
+                                <div className="text-sm font-semibold leading-snug">{bulkResult}</div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* ============ TALEPLERİM BALONCUĞU (öğretmen modu, sadece masaüstü — mobilde alt çubukta) ============ */}
                     {role !== 'admin' && (
                         <button onClick={taleplerimAc} className="no-snapshot hidden md:flex fixed z-40 right-6 bottom-6 items-center gap-2 pl-4 pr-5 py-3.5 rounded-full text-white font-semibold text-sm" style={{ background: 'var(--teal-dark)', boxShadow: '0 6px 18px rgba(20,25,40,.28)' }}>
@@ -1168,7 +1197,7 @@
                                 <div className="flex items-center justify-between mb-4">
                                     <div className="flex items-center gap-3">
                                         <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0" style={{ background: 'var(--teal-tint)' }}>
-                                            <Icon name="bell" className="w-5 h-5" style={{ color: 'var(--teal-dark)' }} />
+                                            <Icon name="bell" className="w-3.5 h-3.5" style={{ color: 'var(--teal-dark)' }} />
                                         </div>
                                         <div>
                                             <h3 className="font-display font-semibold text-xl">Taleplerim</h3>
@@ -1259,43 +1288,40 @@
 
                                     <div className="flex-1 min-h-0 p-4 sm:p-8 overflow-y-auto">
                                         {settingsTab === 'okul' && (
-                                            <div className="max-w-2xl space-y-8">
+                                            <div className="max-w-2xl space-y-4 sm:space-y-6">
                                                 <form onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.target); handleSaveSettings({ schoolName: f.get('schoolName') || SISTEM_ADI, schoolSubtitle: f.get('schoolSubtitle') || '' }, 'Okul bilgileri güncellendi'); }}>
-                                                    <p className="text-sm font-medium mb-5" style={{ color: 'var(--ink-soft)' }}>Üst çubukta görünen okul logosunu, adını ve alt başlığı düzenleyin.</p>
-                                                    <div className="grid sm:grid-cols-[auto,1fr] gap-6 items-start">
-                                                        <div className="flex flex-col items-center gap-2">
-                                                            <div className="w-20 h-20 rounded-2xl flex items-center justify-center overflow-hidden font-display font-bold text-3xl border" style={{ color: 'var(--teal-dark)', borderColor: 'var(--line)' }}>
-                                                                {settings.logoDataUrl ? <img src={settings.logoDataUrl} alt="Okul logosu" className="w-full h-full object-contain" /> : (settings.schoolName || SISTEM_ADI).charAt(0)}
-                                                            </div>
-                                                            <label className="px-3 py-2 rounded-lg text-sm font-semibold cursor-pointer" style={{ background: 'var(--paper-2)', color: 'var(--ink)' }}>
+                                                    <div className="flex items-center gap-3 mb-3 sm:mb-4">
+                                                        <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl flex items-center justify-center overflow-hidden font-display font-bold text-lg sm:text-2xl border shrink-0" style={{ color: 'var(--teal-dark)', borderColor: 'var(--line)' }}>
+                                                            {settings.logoDataUrl ? <img src={settings.logoDataUrl} alt="Okul logosu" className="w-full h-full object-contain" /> : (settings.schoolName || SISTEM_ADI).charAt(0)}
+                                                        </div>
+                                                        <div className="flex flex-col gap-1 min-w-0">
+                                                            <label className="px-2.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer w-fit" style={{ background: 'var(--paper-2)', color: 'var(--ink)' }}>
                                                                 Logo yükle
                                                                 <input type="file" accept="image/*" onChange={handleLogoChange} className="hidden" />
                                                             </label>
                                                             {settings.logoDataUrl && (
-                                                                <button type="button" onClick={() => handleSaveSettings({ logoDataUrl: '' }, 'Logo kaldırıldı')} className="text-xs font-semibold" style={{ color: 'var(--brick)' }}>Logoyu kaldır</button>
+                                                                <button type="button" onClick={() => handleSaveSettings({ logoDataUrl: '' }, 'Logo kaldırıldı')} className="text-[11px] font-semibold text-left" style={{ color: 'var(--brick)' }}>Logoyu kaldır</button>
                                                             )}
                                                         </div>
-                                                        <div className="space-y-4 w-full">
-                                                            <div>
-                                                                <label className="block text-sm font-semibold mb-1" style={{ color: 'var(--ink-soft)' }}>Okul / sistem adı</label>
-                                                                <input name="schoolName" defaultValue={settings.schoolName} placeholder={SISTEM_ADI} className="w-full px-4 py-3 rounded-xl text-sm font-semibold outline-none border-2" style={{ borderColor: 'var(--line)', background: 'var(--paper)' }} />
-                                                            </div>
-                                                            <div>
-                                                                <label className="block text-sm font-semibold mb-1" style={{ color: 'var(--ink-soft)' }}>Alt başlık</label>
-                                                                <input name="schoolSubtitle" defaultValue={settings.schoolSubtitle} placeholder="Örn: Karabağlar / İzmir" className="w-full px-4 py-3 rounded-xl text-base outline-none border-2" style={{ borderColor: 'var(--line)', background: 'var(--paper)' }} />
-                                                                <p className="text-xs font-medium mt-1.5" style={{ color: 'var(--ink-soft)' }}>Üst çubukta okul adının altında görünür.</p>
-                                                            </div>
-                                                            <button type="submit" className="px-6 py-3 rounded-xl text-white font-semibold text-sm shadow-sm" style={{ background: 'var(--teal)' }}>Kaydet</button>
+                                                    </div>
+                                                    <div className="space-y-2.5 sm:space-y-3 w-full">
+                                                        <div>
+                                                            <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--ink-soft)' }}>Okul / sistem adı</label>
+                                                            <input name="schoolName" defaultValue={settings.schoolName} placeholder={SISTEM_ADI} className="w-full px-3.5 py-2.5 rounded-xl text-sm font-semibold outline-none border-2" style={{ borderColor: 'var(--line)', background: 'var(--paper)' }} />
                                                         </div>
+                                                        <div>
+                                                            <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--ink-soft)' }}>Alt başlık</label>
+                                                            <input name="schoolSubtitle" defaultValue={settings.schoolSubtitle} placeholder="Örn: Karabağlar / İzmir" className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none border-2" style={{ borderColor: 'var(--line)', background: 'var(--paper)' }} />
+                                                        </div>
+                                                        <button type="submit" className="px-5 py-2.5 rounded-xl text-white font-semibold text-sm shadow-sm" style={{ background: 'var(--teal)' }}>Kaydet</button>
                                                     </div>
                                                 </form>
 
-                                                <div className="pt-6 border-t" style={{ borderColor: 'var(--line)' }}>
-                                                    <p className="text-sm font-semibold mb-1" style={{ color: 'var(--ink)' }}>Yönetici şifresi</p>
-                                                    <p className="text-xs font-medium mb-3" style={{ color: 'var(--ink-soft)' }}>Yönetici girişi için kullanılan şifreyi değiştirin.</p>
+                                                <div className="pt-3 sm:pt-4 border-t" style={{ borderColor: 'var(--line)' }}>
+                                                    <p className="text-xs font-semibold mb-2" style={{ color: 'var(--ink)' }}>Yönetici şifresi</p>
                                                     <form onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.target); handleSaveSettings({ adminPassword: f.get('adminPassword') || settings.adminPassword }, 'Şifre güncellendi'); }} className="flex gap-2 max-w-md">
-                                                        <input name="adminPassword" defaultValue={settings.adminPassword} className="flex-1 px-4 py-3 rounded-xl font-mono text-base outline-none border-2" style={{ borderColor: 'var(--line)', background: 'var(--paper)' }} />
-                                                        <button type="submit" className="px-5 py-3 rounded-xl text-white font-semibold text-base shadow-sm" style={{ background: 'var(--teal)' }}>Kaydet</button>
+                                                        <input name="adminPassword" defaultValue={settings.adminPassword} className="flex-1 min-w-0 px-3.5 py-2.5 rounded-xl font-mono text-sm outline-none border-2" style={{ borderColor: 'var(--line)', background: 'var(--paper)' }} />
+                                                        <button type="submit" className="px-4 py-2.5 rounded-xl text-white font-semibold text-sm shadow-sm shrink-0" style={{ background: 'var(--teal)' }}>Kaydet</button>
                                                     </form>
                                                 </div>
                                             </div>
@@ -1303,18 +1329,21 @@
 
                                         {settingsTab === 'saatler' && (
                                             <div className="max-w-3xl">
-                                                <p className="text-sm font-medium mb-5" style={{ color: 'var(--ink-soft)' }}>6 ders saatlik sabah ve öğle bloklarının başlangıç/bitiş saatlerini güncelleyin. Değişiklikler kaydedildiği an masaüstü ve mobil görünümün tamamına yansır.</p>
-                                                <div className="grid sm:grid-cols-2 gap-6">
+                                                <p className="hidden sm:block text-sm font-medium mb-5" style={{ color: 'var(--ink-soft)' }}>6 ders saatlik sabah ve öğle bloklarının başlangıç/bitiş saatlerini güncelleyin. Değişiklikler kaydedildiği an masaüstü ve mobil görünümün tamamına yansır.</p>
+                                                <div className="grid sm:grid-cols-2 gap-4 sm:gap-6">
                                                     {[['SABAH', 'Sabah dersleri', MORNING_LESSONS], ['ÖĞLE', 'Öğle dersleri', AFTERNOON_LESSONS]].map(([blockKey, blockLabel, lessons]) => (
-                                                        <div key={blockKey}>
+                                                        <div key={blockKey} className="min-w-0">
                                                             <p className="text-xs font-semibold mb-2 uppercase tracking-wide" style={{ color: 'var(--ink-soft)' }}>{blockLabel}</p>
-                                                            <div className="space-y-2">
+                                                            <div className="space-y-1.5 sm:space-y-2">
                                                                 {lessons.map((lesson, idx) => (
-                                                                    <div key={idx} className="flex items-center gap-2 p-2.5 rounded-xl border" style={{ borderColor: 'var(--line)', background: 'var(--paper)' }}>
-                                                                        <div className="w-14 shrink-0 text-xs font-semibold" style={{ color: 'var(--teal-dark)' }}>{lesson.label}</div>
-                                                                        <input type="time" value={lesson.start} onChange={e => handleSaveLessonTimes(blockKey, idx, 'start', e.target.value)} className="flex-1 min-w-0 px-2 py-2 rounded-lg text-sm outline-none border-2" style={{ borderColor: 'var(--line)', background: 'var(--panel)' }} />
-                                                                        <span className="text-xs shrink-0" style={{ color: 'var(--ink-soft)' }}>–</span>
-                                                                        <input type="time" value={lesson.end} onChange={e => handleSaveLessonTimes(blockKey, idx, 'end', e.target.value)} className="flex-1 min-w-0 px-2 py-2 rounded-lg text-sm outline-none border-2" style={{ borderColor: 'var(--line)', background: 'var(--panel)' }} />
+                                                                    <div key={idx} className="p-2 rounded-xl border" style={{ borderColor: 'var(--line)', background: 'var(--paper)' }}>
+                                                                        <div className="text-[11px] font-semibold mb-1 sm:hidden" style={{ color: 'var(--teal-dark)' }}>{lesson.label}</div>
+                                                                        <div className="flex items-center gap-1">
+                                                                            <div className="hidden sm:block w-14 shrink-0 text-xs font-semibold" style={{ color: 'var(--teal-dark)' }}>{lesson.label}</div>
+                                                                            <input type="time" value={lesson.start} onChange={e => handleSaveLessonTimes(blockKey, idx, 'start', e.target.value)} className="flex-1 min-w-0 w-0 px-1.5 py-1.5 rounded-lg text-xs sm:text-sm outline-none border-2" style={{ borderColor: 'var(--line)', background: 'var(--panel)' }} />
+                                                                            <span className="text-xs shrink-0" style={{ color: 'var(--ink-soft)' }}>–</span>
+                                                                            <input type="time" value={lesson.end} onChange={e => handleSaveLessonTimes(blockKey, idx, 'end', e.target.value)} className="flex-1 min-w-0 w-0 px-1.5 py-1.5 rounded-lg text-xs sm:text-sm outline-none border-2" style={{ borderColor: 'var(--line)', background: 'var(--panel)' }} />
+                                                                        </div>
                                                                     </div>
                                                                 ))}
                                                             </div>
@@ -1327,22 +1356,22 @@
                                         {settingsTab === 'mekan' && (
                                             <div className="max-w-2xl">
                                                 <p className="text-sm font-medium mb-3" style={{ color: 'var(--ink-soft)' }}>Rezervasyon yapılabilecek mekanları yönetin.</p>
-                                                <div className="flex gap-2 mb-6">
-                                                    <input value={newLocationInput} onChange={e => setNewLocationInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddLocation(); } }} placeholder="Yeni mekan adı" className="flex-1 px-4 py-3 rounded-xl font-medium text-base outline-none border-2" style={{ borderColor: 'var(--line)', background: 'var(--paper)' }} />
-                                                    <button onClick={handleAddLocation} className="px-5 py-3 rounded-xl text-white font-semibold text-base flex items-center gap-2" style={{ background: 'var(--teal)' }}>
-                                                        <Icon name="plus" className="w-4 h-4" /> Ekle
+                                                <div className="flex gap-2 mb-4 sm:mb-5">
+                                                    <input value={newLocationInput} onChange={e => setNewLocationInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddLocation(); } }} placeholder="Yeni mekan adı" className="flex-1 min-w-0 px-3.5 py-2.5 rounded-xl font-medium text-sm outline-none border-2" style={{ borderColor: 'var(--line)', background: 'var(--paper)' }} />
+                                                    <button onClick={handleAddLocation} className="px-4 py-2.5 rounded-xl text-white font-semibold text-sm flex items-center gap-1.5 shrink-0" style={{ background: 'var(--teal)' }}>
+                                                        <Icon name="plus" className="w-3.5 h-3.5" /> Ekle
                                                     </button>
                                                 </div>
-                                                <p className="text-xs font-semibold mb-2 uppercase tracking-wide" style={{ color: 'var(--ink-soft)' }}>Mevcut mekanlar</p>
-                                                <div className="space-y-2">
+                                                <p className="text-[11px] font-semibold mb-1.5 uppercase tracking-wide" style={{ color: 'var(--ink-soft)' }}>Mevcut mekanlar</p>
+                                                <div className="space-y-1.5">
                                                     {settings.locations.map(loc => (
-                                                        <div key={loc} className="flex items-center gap-3 px-4 py-3 rounded-2xl border" style={{ borderColor: 'var(--line)', background: 'var(--paper)' }}>
-                                                            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'var(--teal-tint)', color: 'var(--teal-dark)' }}>
-                                                                <Icon name="calendar" className="w-4 h-4" />
+                                                        <div key={loc} className="flex items-center gap-2 px-3 py-2 rounded-xl border" style={{ borderColor: 'var(--line)', background: 'var(--paper)' }}>
+                                                            <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--teal-tint)', color: 'var(--teal-dark)' }}>
+                                                                <Icon name="calendar" className="w-3 h-3" />
                                                             </div>
-                                                            <span className="flex-1 text-sm font-semibold" style={{ color: 'var(--ink)' }}>{loc}</span>
-                                                            <button onClick={() => handleRemoveLocation(loc)} className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'var(--brick-tint)', color: 'var(--brick)' }}>
-                                                                <Icon name="x" className="w-3.5 h-3.5" />
+                                                            <span className="flex-1 min-w-0 text-xs font-semibold truncate" style={{ color: 'var(--ink)' }}>{loc}</span>
+                                                            <button onClick={() => handleRemoveLocation(loc)} className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--brick-tint)', color: 'var(--brick)' }}>
+                                                                <Icon name="x" className="w-3 h-3" />
                                                             </button>
                                                         </div>
                                                     ))}
@@ -1352,16 +1381,20 @@
 
                                         {settingsTab === 'tatiller' && (
                                             <div className="max-w-3xl">
-                                                <p className="text-sm font-medium mb-4" style={{ color: 'var(--ink-soft)' }}>Sistemde otomatik kapatılan resmi tatilleri yönetin. "Sadece sabah/öğle kapalı" seçeneği arefe günleri için kullanışlıdır.</p>
+                                                <p className="text-sm font-medium mb-4" style={{ color: 'var(--ink-soft)' }}>Sistemde otomatik kapatılan resmi tatilleri yönetin. Birden fazla gün süren tatiller (ör. ara tatil) için başlangıç tarihini ve gün sayısını girin, sistem takvimi otomatik doldursun. "Sadece sabah/öğle kapalı" seçeneği arefe günleri için kullanışlıdır.</p>
                                                 <div className="p-4 rounded-2xl border mb-5" style={{ borderColor: 'var(--line)', background: 'var(--paper)' }}>
-                                                    <div className="grid sm:grid-cols-[160px,1fr,auto] gap-3 items-end">
+                                                    <div className="grid sm:grid-cols-[140px,90px,1fr,auto] gap-3 items-end">
                                                         <div>
-                                                            <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--ink-soft)' }}>Tarih</label>
+                                                            <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--ink-soft)' }}>Başlangıç tarihi</label>
                                                             <input type="date" value={newHolidayForm.date} min={toDateStrLocal(SISTEM_BASLANGIC)} max={toDateStrLocal(SISTEM_BITIS)} onChange={e => setNewHolidayForm(f => ({ ...f, date: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm outline-none border-2" style={{ borderColor: 'var(--line)', background: 'var(--panel)' }} />
                                                         </div>
                                                         <div>
+                                                            <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--ink-soft)' }}>Gün sayısı</label>
+                                                            <input type="number" min="1" max="60" value={newHolidayForm.days} onChange={e => setNewHolidayForm(f => ({ ...f, days: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl text-sm outline-none border-2" style={{ borderColor: 'var(--line)', background: 'var(--panel)' }} />
+                                                        </div>
+                                                        <div>
                                                             <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--ink-soft)' }}>Tatil adı</label>
-                                                            <input value={newHolidayForm.name} onChange={e => setNewHolidayForm(f => ({ ...f, name: e.target.value }))} placeholder="Örn: Ramazan Bayramı Arifesi" className="w-full px-3 py-2.5 rounded-xl text-sm outline-none border-2" style={{ borderColor: 'var(--line)', background: 'var(--panel)' }} />
+                                                            <input value={newHolidayForm.name} onChange={e => setNewHolidayForm(f => ({ ...f, name: e.target.value }))} placeholder="Örn: Ara Tatil" className="w-full px-3 py-2.5 rounded-xl text-sm outline-none border-2" style={{ borderColor: 'var(--line)', background: 'var(--panel)' }} />
                                                         </div>
                                                         <button onClick={handleAddHoliday} className="px-5 py-2.5 rounded-xl text-white font-semibold text-sm shadow-sm flex items-center justify-center gap-2 whitespace-nowrap" style={{ background: 'var(--teal)' }}>
                                                             <Icon name="plus" className="w-4 h-4" /> Tatil ekle
@@ -1428,9 +1461,12 @@
 
                                                 <div>
                                                     <label className="block text-xs font-semibold mb-2" style={{ color: 'var(--ink-soft)' }}>Haftanın günleri</label>
-                                                    <div className="flex flex-wrap gap-2">
+                                                    <div className="grid grid-cols-5 gap-1.5">
                                                         {[1, 2, 3, 4, 5].map(dIdx => (
-                                                            <button type="button" key={dIdx} onClick={() => toggleBulkDay(dIdx)} className="px-4 py-2 rounded-lg text-xs font-semibold border-2" style={bulkForm.days.includes(dIdx) ? { background: 'var(--teal)', color: 'white', borderColor: 'var(--teal)' } : { borderColor: 'var(--line)', color: 'var(--ink-soft)' }}>{GUN_ADLARI_TR[dIdx]}</button>
+                                                            <button type="button" key={dIdx} onClick={() => toggleBulkDay(dIdx)} className="px-1 py-2 rounded-lg text-[10px] sm:text-xs font-semibold border-2 text-center" style={bulkForm.days.includes(dIdx) ? { background: 'var(--teal)', color: 'white', borderColor: 'var(--teal)' } : { borderColor: 'var(--line)', color: 'var(--ink-soft)' }}>
+                                                                <span className="sm:hidden">{DAY_SHORT[dIdx - 1]}</span>
+                                                                <span className="hidden sm:inline">{GUN_ADLARI_TR[dIdx]}</span>
+                                                            </button>
                                                         ))}
                                                     </div>
                                                 </div>
@@ -1460,7 +1496,6 @@
 
                                                 <div className="flex flex-wrap items-center gap-3">
                                                     <button type="submit" className="w-full sm:w-auto sm:px-10 py-3 text-white font-semibold rounded-2xl text-sm shrink-0" style={{ background: 'var(--teal)' }}>Kursu oluştur</button>
-                                                    {bulkResult && <span className="text-xs font-semibold px-3 py-2 rounded-xl" style={{ background: 'var(--teal-tint)', color: 'var(--teal-dark)' }}>{bulkResult}</span>}
                                                 </div>
                                             </form>
                                         )}
@@ -1521,25 +1556,40 @@
 
                                         {settingsTab === 'yedek' && (
                                             <div className="max-w-2xl">
-                                                <p className="text-sm font-medium mb-5" style={{ color: 'var(--ink-soft)' }}>Tüm sistemi (mekanlar, şifre, okul bilgileri ve tüm rezervasyonlar) tek bir JSON dosyası olarak yedekleyin veya daha önce aldığınız bir yedeği geri yükleyin.</p>
-                                                <div className="space-y-4">
-                                                    <div className="p-4 rounded-2xl border" style={{ borderColor: 'var(--line)', background: 'var(--paper)' }}>
-                                                        <div className="text-sm font-semibold mb-1" style={{ color: 'var(--ink)' }}>Yedek indir</div>
-                                                        <p className="text-xs font-medium mb-3" style={{ color: 'var(--ink-soft)' }}>Sistemin şu anki tüm verilerini JSON dosyası olarak indirir.</p>
-                                                        <button onClick={handleExportBackup} className="px-5 py-2.5 rounded-xl text-white font-semibold text-sm" style={{ background: 'var(--teal)' }}>Yedeği indir (.json)</button>
+                                                <p className="hidden sm:block text-sm font-medium mb-4" style={{ color: 'var(--ink-soft)' }}>Tüm sistemi (mekanlar, şifre, okul bilgileri ve tüm rezervasyonlar) tek bir JSON dosyası olarak yedekleyin veya daha önce aldığınız bir yedeği geri yükleyin.</p>
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center gap-3 p-3 rounded-xl border" style={{ borderColor: 'var(--line)', background: 'var(--paper)' }}>
+                                                        <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--teal-tint)', color: 'var(--teal-dark)' }}>
+                                                            <Icon name="download" className="w-4 h-4" />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>Yedek indir</div>
+                                                            <div className="text-[11px] font-medium truncate" style={{ color: 'var(--ink-soft)' }}>Tüm veriyi JSON olarak indir</div>
+                                                        </div>
+                                                        <button onClick={handleExportBackup} className="px-3.5 py-2 rounded-lg text-white font-semibold text-xs shrink-0" style={{ background: 'var(--teal)' }}>İndir</button>
                                                     </div>
-                                                    <div className="p-4 rounded-2xl border" style={{ borderColor: 'var(--line)', background: 'var(--paper)' }}>
-                                                        <div className="text-sm font-semibold mb-1" style={{ color: 'var(--ink)' }}>Yedek yükle</div>
-                                                        <p className="text-xs font-medium mb-3" style={{ color: 'var(--ink-soft)' }}>Bir yedek dosyası seçin. Yüklendiğinde mevcut tüm veriler yedekteki verilerle değiştirilir.</p>
-                                                        <label className="inline-block px-5 py-2.5 rounded-xl text-sm font-semibold cursor-pointer" style={{ background: 'var(--ink)', color: 'white' }}>
-                                                            Yedek dosyası seç
+                                                    <div className="flex items-center gap-3 p-3 rounded-xl border" style={{ borderColor: 'var(--line)', background: 'var(--paper)' }}>
+                                                        <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--teal-tint)', color: 'var(--teal-dark)' }}>
+                                                            <Icon name="upload" className="w-4 h-4" />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>Yedek yükle</div>
+                                                            <div className="text-[11px] font-medium truncate" style={{ color: 'var(--ink-soft)' }}>Mevcut veriler değiştirilir</div>
+                                                        </div>
+                                                        <label className="inline-block px-3.5 py-2 rounded-lg text-xs font-semibold cursor-pointer shrink-0" style={{ background: 'var(--ink)', color: 'white' }}>
+                                                            Seç
                                                             <input type="file" accept="application/json" onChange={handleImportBackup} className="hidden" />
                                                         </label>
                                                     </div>
-                                                    <div className="p-4 rounded-2xl border" style={{ borderColor: 'var(--line)', background: 'var(--paper)' }}>
-                                                        <div className="text-sm font-semibold mb-1" style={{ color: 'var(--ink)' }}>Kısayol ekle</div>
-                                                        <p id="kisayolDurum" className="text-xs font-medium mb-3" style={{ color: 'var(--ink-soft)' }}>Tarayıcıya girmeden, telefonun ana ekranından veya bilgisayarın masaüstünden doğrudan açın.</p>
-                                                        <button type="button" className="px-5 py-2.5 rounded-xl text-white font-semibold text-sm" style={{ background: 'var(--teal)' }} onClick={() => window.RezervasyonKurulumu && window.RezervasyonKurulumu.ac()}>📲 Kısayol Ekle</button>
+                                                    <div className="flex items-center gap-3 p-3 rounded-xl border" style={{ borderColor: 'var(--line)', background: 'var(--paper)' }}>
+                                                        <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--teal-tint)', color: 'var(--teal-dark)' }}>
+                                                            <Icon name="smartphone" className="w-4 h-4" />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>Kısayol ekle</div>
+                                                            <div id="kisayolDurum" className="text-[11px] font-medium truncate" style={{ color: 'var(--ink-soft)' }}>Ana ekrandan doğrudan aç</div>
+                                                        </div>
+                                                        <button type="button" className="px-3.5 py-2 rounded-lg text-white font-semibold text-xs shrink-0" style={{ background: 'var(--teal)' }} onClick={() => window.RezervasyonKurulumu && window.RezervasyonKurulumu.ac()}>Ekle</button>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1723,7 +1773,10 @@
                                                 return (
                                                     <div key={`${day.dateStr}-${lesson.label}`} onClick={() => clickable && setEditingCell({ ...day, lesson, valid: day.valid, holiday })} className="mobile-week-cell rounded-lg border cell-tap flex items-center justify-center overflow-hidden px-0.5" style={{ background: bg, borderColor: bd, opacity: day.valid ? 1 : 0.5 }}>
                                                         {b ? (
-                                                            <span className="text-[9px] font-semibold leading-tight truncate" style={{ color: txt }}>{trUpper(b.teacher)}</span>
+                                                            <div className="w-full text-center leading-[1.1]">
+                                                                <div className="text-[7.5px] font-bold" style={{ color: txt, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{trUpper(b.teacher)}</div>
+                                                                {b.activity && <div className="text-[6.5px] font-medium mt-px" style={{ color: txt, opacity: 0.8, display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{trUpper(b.activity)}</div>}
+                                                            </div>
                                                         ) : t ? (
                                                             <Icon name="bell" className="w-3 h-3" style={{ color: txt }} />
                                                         ) : holiday ? (
