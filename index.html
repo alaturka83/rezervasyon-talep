@@ -329,6 +329,24 @@
             return n.getTime() >= SISTEM_BASLANGIC.getTime() && n.getTime() <= SISTEM_BITIS.getTime();
         }
 
+        // Bugünün tarih dizesi ("YYYY-MM-DD") ile karşılaştırarak bir günün
+        // geçmişte kalıp kalmadığını söyler. Dize biçimi sabit uzunlukta
+        // olduğu için normal metin karşılaştırması, tarih karşılaştırmasıyla
+        // aynı sonucu verir.
+        function isPastDateStr(dateStr) {
+            return dateStr < toDateStrLocal(new Date());
+        }
+
+        // Uygulama ilk açıldığında (ya da "Bugüne git" ile) gösterilecek
+        // tarihi hesaplar: bugün sistem aralığındaysa bugünü, aralığın
+        // öncesindeyse başlangıcı, sonrasındaysa bitişi döndürür — böylece
+        // içinde bulunulan hafta (veya en yakın geçerli hafta) açılır.
+        function gecerliBaslangicTarihi() {
+            const simdi = Date.now();
+            if (SISTEM_BASLANGIC.getTime() >= simdi) return new Date(SISTEM_BASLANGIC);
+            return new Date(Math.min(Math.max(simdi, SISTEM_BASLANGIC.getTime()), SISTEM_BITIS.getTime()));
+        }
+
         function bookingDocId(location, dateStr, block, label) {
             return `${slugify(location)}-${dateStr}-${block}-${label}`.replace(/\s+/g, '-');
         }
@@ -436,7 +454,7 @@
             };
             const [editingCell, setEditingCell] = useState(null);
             const [isEditingBooking, setIsEditingBooking] = useState(false);
-            const [currentDate, setCurrentDate] = useState(new Date(SISTEM_BASLANGIC));
+            const [currentDate, setCurrentDate] = useState(() => gecerliBaslangicTarihi());
             const [isSnapshotMode, setIsSnapshotMode] = useState(false);
             const [isCapturing, setIsCapturing] = useState(false);
             const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -632,6 +650,7 @@
                 if (!isim) { setTalepGonderHata('Lütfen adınızı ve soyadınızı yazın.'); return; }
                 if (!aktivite) { setTalepGonderHata('Lütfen etkinlik detayını yazın.'); return; }
                 if (!editingCell || !fbDbRef.current) return;
+                if (isPastDateStr(editingCell.dateStr)) { setTalepGonderHata('Geçmiş bir tarih için talep gönderemezsiniz.'); return; }
                 const day = editingCell, lesson = editingCell.lesson;
                 const guncelTalep = findTalep(day, lesson);
                 const guncelBooking = findBooking(day, lesson);
@@ -1152,7 +1171,7 @@
             const currentBooking = editingCell ? findBooking(editingCell, editingCell.lesson) : null;
             const currentTalep = editingCell ? findTalep(editingCell, editingCell.lesson) : null;
             const openSnapshotMode = () => { window.scrollTo(0, 0); setIsSnapshotMode(true); };
-            const goToday = () => setCurrentDate(new Date(SISTEM_BASLANGIC.getTime() >= Date.now() ? SISTEM_BASLANGIC : Math.min(Math.max(Date.now(), SISTEM_BASLANGIC.getTime()), SISTEM_BITIS.getTime())));
+            const goToday = () => setCurrentDate(gecerliBaslangicTarihi());
 
             const jumpToDate = (dateStr) => {
                 if (!dateStr) return;
@@ -1894,10 +1913,11 @@
                                                 const b = findBooking(day, lesson);
                                                 const t = findTalep(day, lesson);
                                                 const holiday = pickHolidayForBlock(day.dayHolidays, lesson.block);
-                                                const clickable = day.valid;
-                                                const bg = !day.valid ? 'var(--paper-2)' : b ? 'var(--ochre-tint)' : t ? 'var(--teal-tint)' : holiday ? 'var(--brick-tint)' : 'var(--panel)';
+                                                const gecmisKilit = role !== 'admin' && !b && !t && isPastDateStr(day.dateStr);
+                                                const clickable = day.valid && !gecmisKilit;
+                                                const bg = !day.valid || gecmisKilit ? 'var(--paper-2)' : b ? 'var(--ochre-tint)' : t ? 'var(--teal-tint)' : holiday ? 'var(--brick-tint)' : 'var(--panel)';
                                                 return (
-                                                    <div key={`${day.dateStr}-${lesson.label}`} onClick={() => clickable && setEditingCell({ ...day, lesson, valid: day.valid, holiday })} className="p-2 cell-tap flex items-center justify-center" style={{ background: bg, cursor: day.valid ? 'pointer' : 'not-allowed', opacity: day.valid ? 1 : 0.5, minHeight: isSnapshotMode ? undefined : '4rem', paddingTop: isSnapshotMode ? '1.25rem' : undefined, paddingBottom: isSnapshotMode ? '1.25rem' : undefined }}>
+                                                    <div key={`${day.dateStr}-${lesson.label}`} onClick={() => clickable && setEditingCell({ ...day, lesson, valid: day.valid, holiday })} className="p-2 cell-tap flex items-center justify-center" style={{ background: bg, cursor: clickable ? 'pointer' : 'not-allowed', opacity: day.valid && !gecmisKilit ? 1 : 0.5, minHeight: isSnapshotMode ? undefined : '4rem', paddingTop: isSnapshotMode ? '1.25rem' : undefined, paddingBottom: isSnapshotMode ? '1.25rem' : undefined }}>
                                                         {b ? (
                                                             <div>
                                                                 <div className={isSnapshotMode ? "text-base font-semibold leading-snug" : "text-base font-semibold leading-snug truncate"} style={{ color: 'var(--ink)' }} title={trUpper(b.teacher)}>{trUpper(b.teacher)}</div>
@@ -1912,7 +1932,7 @@
                                                                 <span className="text-xs font-semibold leading-snug" style={{ color: 'var(--brick)', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }} title={holiday.name}>{holiday.name}</span>
                                                             </div>
                                                         ) : (
-                                                            <div className="flex items-center justify-center">{day.valid && role === 'admin' ? <Icon name="plus" className="w-5 h-5" style={{ color: 'var(--line-strong)' }} /> : <span className="text-sm font-medium" style={{ color: day.valid ? 'var(--ink-soft)' : 'transparent' }}>{day.valid ? 'Müsait' : ''}</span>}</div>
+                                                            <div className="flex items-center justify-center">{day.valid && role === 'admin' ? <Icon name="plus" className="w-5 h-5" style={{ color: 'var(--line-strong)' }} /> : gecmisKilit ? <span className="text-sm font-medium" style={{ color: 'var(--ink-soft)' }}>Geçmiş</span> : <span className="text-sm font-medium" style={{ color: day.valid ? 'var(--ink-soft)' : 'transparent' }}>{day.valid ? 'Müsait' : ''}</span>}</div>
                                                         )}
                                                     </div>
                                                 );
@@ -1945,12 +1965,13 @@
                                                 const b = findBooking(day, lesson);
                                                 const t = findTalep(day, lesson);
                                                 const holiday = pickHolidayForBlock(day.dayHolidays, lesson.block);
-                                                const clickable = day.valid;
-                                                const bg = !day.valid ? 'var(--paper-2)' : b ? 'var(--brick-tint)' : t ? 'var(--teal-tint)' : holiday ? 'var(--ochre-tint)' : 'var(--green-tint)';
-                                                const bd = !day.valid ? 'var(--line)' : b ? 'var(--brick)' : t ? 'var(--teal-dark)' : holiday ? 'var(--ochre)' : 'var(--green)';
-                                                const txt = !day.valid ? 'var(--ink-soft)' : b ? 'var(--brick)' : t ? 'var(--teal-dark)' : holiday ? '#7A5A1E' : 'var(--green)';
+                                                const gecmisKilit = role !== 'admin' && !b && !t && isPastDateStr(day.dateStr);
+                                                const clickable = day.valid && !gecmisKilit;
+                                                const bg = !day.valid || gecmisKilit ? 'var(--paper-2)' : b ? 'var(--brick-tint)' : t ? 'var(--teal-tint)' : holiday ? 'var(--ochre-tint)' : 'var(--green-tint)';
+                                                const bd = !day.valid || gecmisKilit ? 'var(--line)' : b ? 'var(--brick)' : t ? 'var(--teal-dark)' : holiday ? 'var(--ochre)' : 'var(--green)';
+                                                const txt = !day.valid || gecmisKilit ? 'var(--ink-soft)' : b ? 'var(--brick)' : t ? 'var(--teal-dark)' : holiday ? '#7A5A1E' : 'var(--green)';
                                                 return (
-                                                    <div key={`${day.dateStr}-${lesson.label}`} onClick={() => clickable && setEditingCell({ ...day, lesson, valid: day.valid, holiday })} className="mobile-week-cell rounded-lg border cell-tap flex items-center justify-center overflow-hidden px-0.5" style={{ background: bg, borderColor: bd, opacity: day.valid ? 1 : 0.5 }}>
+                                                    <div key={`${day.dateStr}-${lesson.label}`} onClick={() => clickable && setEditingCell({ ...day, lesson, valid: day.valid, holiday })} className="mobile-week-cell rounded-lg border cell-tap flex items-center justify-center overflow-hidden px-0.5" style={{ background: bg, borderColor: bd, opacity: day.valid && !gecmisKilit ? 1 : 0.5 }}>
                                                         {b ? (
                                                             <div className="w-full text-center leading-[1.1]">
                                                                 <div className="text-[7.5px] font-bold" style={{ color: txt, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{trUpper(b.teacher)}</div>
@@ -1964,6 +1985,8 @@
                                                                     <span className="text-[6.5px] font-semibold leading-[1.05]" style={{ color: txt, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{holiday.name}</span>
                                                                 </div>
                                                             )
+                                                        ) : gecmisKilit ? (
+                                                            <span className="text-[8px] font-semibold" style={{ color: txt }}>Geçmiş</span>
                                                         ) : day.valid && role === 'admin' ? (
                                                             <Icon name="plus" className="w-3.5 h-3.5" style={{ color: txt }} />
                                                         ) : day.valid ? (
