@@ -444,6 +444,7 @@
 
             const [showSettingsModal, setShowSettingsModal] = useState(false);
             const [settingsTab, setSettingsTab] = useState('okul'); // okul | mekan | sifre | toplu | kurslar
+            const [dersSaatleriTaslak, setDersSaatleriTaslak] = useState(null);
             const [editingGroupKey, setEditingGroupKey] = useState(null);
             const [conflictDialog, setConflictDialog] = useState(null);
             const [newLocationInput, setNewLocationInput] = useState('');
@@ -708,6 +709,18 @@
                 setIsEditingBooking(false);
             }, [editingCell]);
 
+            // Ders Saatleri sekmesi her açıldığında taslağı geçerli kayıtlı
+            // saatlerle senkronize eder; böylece "Güncelle" butonuna basılana
+            // kadar değişiklikler kaydedilmeden ekranda tutulur.
+            useEffect(() => {
+                if (showSettingsModal && settingsTab === 'saatler') {
+                    setDersSaatleriTaslak({
+                        morning: settings.lessonTimes?.morning || DEFAULT_MORNING_LESSONS,
+                        afternoon: settings.lessonTimes?.afternoon || DEFAULT_AFTERNOON_LESSONS
+                    });
+                }
+            }, [showSettingsModal, settingsTab]);
+
             // Aktif mekanı ayarlar değiştiğinde doğrula
             useEffect(() => {
                 if (!settings.locations || !settings.locations.length) return;
@@ -913,18 +926,31 @@
                 handleSaveSettings({ holidays: (settings.holidays || []).filter(h => !(h.date === date && h.block === block)) }, 'Tatil kaldırıldı');
             };
 
+            // Ders saati inputları artık her tuş vuruşunda değil, sadece
+            // "Güncelle" butonuna basıldığında kaydedilir; buraya kadarki
+            // değişiklikler yalnızca taslakta (dersSaatleriTaslak) tutulur.
             const handleSaveLessonTimes = (blockKey, index, field, value) => {
                 if (role !== 'admin') return;
                 const mapKey = blockKey === 'SABAH' ? 'morning' : 'afternoon';
-                const current = settings.lessonTimes?.[mapKey] || (blockKey === 'SABAH' ? DEFAULT_MORNING_LESSONS : DEFAULT_AFTERNOON_LESSONS);
-                const updated = current.map((l, i) => i === index ? { ...l, [field]: value } : l);
+                setDersSaatleriTaslak(prev => {
+                    const base = prev || {
+                        morning: settings.lessonTimes?.morning || DEFAULT_MORNING_LESSONS,
+                        afternoon: settings.lessonTimes?.afternoon || DEFAULT_AFTERNOON_LESSONS
+                    };
+                    const current = base[mapKey] || (blockKey === 'SABAH' ? DEFAULT_MORNING_LESSONS : DEFAULT_AFTERNOON_LESSONS);
+                    const updated = current.map((l, i) => i === index ? { ...l, [field]: value } : l);
+                    return { ...base, [mapKey]: updated };
+                });
+            };
+
+            const handleUpdateLessonTimes = () => {
+                if (role !== 'admin' || !dersSaatleriTaslak) return;
                 handleSaveSettings({
                     lessonTimes: {
-                        morning: settings.lessonTimes?.morning || DEFAULT_MORNING_LESSONS,
-                        afternoon: settings.lessonTimes?.afternoon || DEFAULT_AFTERNOON_LESSONS,
-                        [mapKey]: updated
+                        morning: dersSaatleriTaslak.morning || DEFAULT_MORNING_LESSONS,
+                        afternoon: dersSaatleriTaslak.afternoon || DEFAULT_AFTERNOON_LESSONS
                     }
-                });
+                }, 'Ders saatleri güncellendi');
             };
 
             const toggleBulkDay = (dayIdx) => {
@@ -1458,9 +1484,9 @@
 
                                         {settingsTab === 'saatler' && (
                                             <div className="max-w-3xl">
-                                                <p className="hidden sm:block text-sm font-medium mb-5" style={{ color: 'var(--ink-soft)' }}>6 ders saatlik sabah ve öğle bloklarının başlangıç/bitiş saatlerini güncelleyin. Değişiklikler kaydedildiği an masaüstü ve mobil görünümün tamamına yansır.</p>
+                                                <p className="hidden sm:block text-sm font-medium mb-5" style={{ color: 'var(--ink-soft)' }}>6 ders saatlik sabah ve öğle bloklarının başlangıç/bitiş saatlerini düzenleyin, ardından değişiklikleri kaydetmek için "Güncelle" butonuna basın.</p>
                                                 <div className="grid grid-cols-2 gap-1.5 sm:gap-6">
-                                                    {[['SABAH', 'Sabah dersleri', MORNING_LESSONS], ['ÖĞLE', 'Öğle dersleri', AFTERNOON_LESSONS]].map(([blockKey, blockLabel, lessons]) => (
+                                                    {[['SABAH', 'Sabah dersleri', dersSaatleriTaslak?.morning || MORNING_LESSONS], ['ÖĞLE', 'Öğle dersleri', dersSaatleriTaslak?.afternoon || AFTERNOON_LESSONS]].map(([blockKey, blockLabel, lessons]) => (
                                                         <div key={blockKey} className="min-w-0">
                                                             <p className="text-[10px] sm:text-xs font-semibold mb-1.5 sm:mb-2 uppercase tracking-wide truncate" style={{ color: 'var(--ink-soft)' }}>{blockLabel}</p>
                                                             <div className="space-y-1 sm:space-y-2">
@@ -1479,6 +1505,9 @@
                                                         </div>
                                                     ))}
                                                 </div>
+                                                <button onClick={handleUpdateLessonTimes} className="w-full sm:w-auto mt-4 sm:mt-6 px-6 py-3 sm:py-2.5 rounded-xl sm:rounded-2xl text-white font-semibold text-sm shadow-sm flex items-center justify-center gap-2" style={{ background: 'var(--teal)' }}>
+                                                    <Icon name="check" className="w-4 h-4" /> Güncelle
+                                                </button>
                                             </div>
                                         )}
 
