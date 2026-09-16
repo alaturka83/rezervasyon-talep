@@ -228,6 +228,7 @@
                 case 'download': return <svg {...common}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>;
                 case 'upload': return <svg {...common}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>;
                 case 'smartphone': return <svg {...common}><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>;
+                case 'edit': return <svg {...common}><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>;
                 default: return null;
             }
         };
@@ -434,6 +435,7 @@
                 } catch (e) {}
             };
             const [editingCell, setEditingCell] = useState(null);
+            const [isEditingBooking, setIsEditingBooking] = useState(false);
             const [currentDate, setCurrentDate] = useState(new Date(SISTEM_BASLANGIC));
             const [isSnapshotMode, setIsSnapshotMode] = useState(false);
             const [isCapturing, setIsCapturing] = useState(false);
@@ -625,7 +627,9 @@
 
             const talepGonder = (isim, aktivite) => {
                 isim = (isim || '').trim();
+                aktivite = (aktivite || '').trim();
                 if (!isim) { setTalepGonderHata('Lütfen adınızı ve soyadınızı yazın.'); return; }
+                if (!aktivite) { setTalepGonderHata('Lütfen etkinlik detayını yazın.'); return; }
                 if (!editingCell || !fbDbRef.current) return;
                 const day = editingCell, lesson = editingCell.lesson;
                 const guncelTalep = findTalep(day, lesson);
@@ -701,6 +705,7 @@
             useEffect(() => {
                 setTalepGonderHata('');
                 setTalepGonderiliyor(false);
+                setIsEditingBooking(false);
             }, [editingCell]);
 
             // Aktif mekanı ayarlar değiştiğinde doğrula
@@ -1991,21 +1996,45 @@
                                 {currentBooking ? (
                                     <div>
                                         <div className="flex justify-between items-center mb-6">
-                                            <h3 className="font-display font-semibold text-xl">Kayıt bilgisi</h3>
+                                            <h3 className="font-display font-semibold text-xl">{role === 'admin' && isEditingBooking ? 'Kaydı güncelle' : 'Kayıt bilgisi'}</h3>
                                             <button onClick={() => setEditingCell(null)} className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: 'var(--paper-2)' }}>
                                                 <Icon name="x" className="w-5 h-5" />
                                             </button>
                                         </div>
-                                        <div className="p-5 rounded-2xl space-y-4" style={{ background: 'var(--ochre-tint)' }}>
-                                            <div><div className="text-[11px] font-semibold" style={{ color: '#7A5A1E' }}>Öğretmen</div><div className="text-xl font-semibold mt-0.5" style={{ color: 'var(--ink)' }}>{currentBooking.teacher ? trUpper(currentBooking.teacher) : "Bilinmiyor"}</div></div>
-                                            <div><div className="text-[11px] font-semibold" style={{ color: '#7A5A1E' }}>Etkinlik</div><div className="text-xl font-semibold mt-0.5" style={{ color: 'var(--ink)' }}>{currentBooking.activity ? trUpper(currentBooking.activity) : "Belirtilmedi"}</div></div>
-                                        </div>
-                                        {role === 'admin' && (
-                                            <button onClick={handleDeleteCurrentBooking} className="w-full mt-4 py-3.5 font-semibold rounded-2xl flex items-center justify-center gap-2" style={{ background: 'var(--brick-tint)', color: 'var(--brick)' }}>
-                                                <Icon name="trash" className="w-4 h-4" /> Kaydı sil
-                                            </button>
+                                        {role === 'admin' && isEditingBooking ? (
+                                            <form onSubmit={handleSaveBooking} className="space-y-4">
+                                                <div>
+                                                    <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--ink-soft)' }}>Öğretmen adı</label>
+                                                    <input name="teacher" autoFocus required defaultValue={currentBooking.teacher || ''} placeholder="Ad Soyad" className="w-full px-4 py-3.5 rounded-2xl font-semibold text-base outline-none border-2" style={{ borderColor: 'var(--line)', background: 'var(--paper)' }} />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--ink-soft)' }}>Etkinlik detayı</label>
+                                                    <input name="activity" required defaultValue={currentBooking.activity || ''} placeholder="Konu / Etkinlik" className="w-full px-4 py-3.5 rounded-2xl font-semibold text-base outline-none border-2" style={{ borderColor: 'var(--line)', background: 'var(--paper)' }} />
+                                                </div>
+                                                <div className="flex gap-2 mt-2">
+                                                    <button type="button" onClick={() => setIsEditingBooking(false)} className="flex-1 py-3.5 font-semibold rounded-2xl" style={{ background: 'var(--paper-2)', color: 'var(--ink)' }}>Vazgeç</button>
+                                                    <button type="submit" className="flex-1 py-3.5 text-white font-semibold rounded-2xl" style={{ background: 'var(--teal)' }}>Güncelle</button>
+                                                </div>
+                                            </form>
+                                        ) : (
+                                            <div>
+                                                <div className="p-5 rounded-2xl space-y-4" style={{ background: 'var(--ochre-tint)' }}>
+                                                    <div><div className="text-[11px] font-semibold" style={{ color: '#7A5A1E' }}>Öğretmen</div><div className="text-xl font-semibold mt-0.5" style={{ color: 'var(--ink)' }}>{currentBooking.teacher ? trUpper(currentBooking.teacher) : "Bilinmiyor"}</div></div>
+                                                    <div><div className="text-[11px] font-semibold" style={{ color: '#7A5A1E' }}>Etkinlik</div><div className="text-xl font-semibold mt-0.5" style={{ color: 'var(--ink)' }}>{currentBooking.activity ? trUpper(currentBooking.activity) : "Belirtilmedi"}</div></div>
+                                                </div>
+                                                {role === 'admin' && (
+                                                    <div className="flex gap-2 mt-4">
+                                                        <button onClick={() => setIsEditingBooking(true)} className="flex-1 py-3.5 font-semibold rounded-2xl flex items-center justify-center gap-2" style={{ background: 'var(--teal-tint)', color: 'var(--teal-dark)' }}>
+                                                            <Icon name="edit" className="w-4 h-4" /> Güncelle
+                                                        </button>
+                                                        <button onClick={handleDeleteCurrentBooking} className="flex-1 py-3.5 font-semibold rounded-2xl flex items-center justify-center gap-2" style={{ background: 'var(--brick-tint)', color: 'var(--brick)' }}>
+                                                            <Icon name="trash" className="w-4 h-4" /> Kaydı sil
+                                                        </button>
+                                                    </div>
+                                                )}
+                                                <button onClick={() => setEditingCell(null)} className="w-full mt-3 py-3.5 text-white font-semibold rounded-2xl" style={{ background: 'var(--ink)' }}>Kapat</button>
+                                            </div>
                                         )}
-                                        <button onClick={() => setEditingCell(null)} className="w-full mt-3 py-3.5 text-white font-semibold rounded-2xl" style={{ background: 'var(--ink)' }}>Kapat</button>
                                     </div>
                                 ) : role === 'admin' ? (
                                     <div>
@@ -2091,8 +2120,8 @@
                                                     <input name="teacher" autoFocus required defaultValue={localStorage.getItem('rz_talep_isim') || ''} placeholder="Adınız ve soyadınız" className="w-full px-5 py-4 rounded-2xl font-semibold text-lg outline-none border-2" style={{ borderColor: 'var(--line)', background: 'var(--paper)' }} />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--ink-soft)' }}>Ne için kullanacaksınız? (opsiyonel)</label>
-                                                    <input name="activity" placeholder="Örn: Veli toplantısı" className="w-full px-5 py-4 rounded-2xl font-semibold text-lg outline-none border-2" style={{ borderColor: 'var(--line)', background: 'var(--paper)' }} />
+                                                    <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--ink-soft)' }}>Etkinlik detayı</label>
+                                                    <input name="activity" required placeholder="Örn: Veli toplantısı" className="w-full px-5 py-4 rounded-2xl font-semibold text-lg outline-none border-2" style={{ borderColor: 'var(--line)', background: 'var(--paper)' }} />
                                                 </div>
                                             </div>
                                             <button type="submit" disabled={talepGonderiliyor} className="w-full py-4 text-white font-semibold rounded-2xl" style={{ background: 'var(--teal)' }}>{talepGonderiliyor ? 'Gönderiliyor…' : 'Talebi gönder'}</button>
