@@ -655,23 +655,12 @@
                 });
             };
 
-            // Öğretmen kendi (birikmiş) talebini listesinden siler — talep bulutta
-            // da tamamen kaldırılır (bekliyor durumundaysa admin panelinden de kalkar).
-            const benimTalebimiSil = (t) => {
+            // Yönetici, bekleyen bir talebi tamamen silebilir (öğretmen tarafında
+            // bu yetki yok — talep gönderildikten sonra öğretmen değiştiremez/silemez).
+            const adminTalebiSil = (t) => {
+                if (role !== 'admin' || !fbDbRef.current) return;
                 if (!window.confirm('Bu talebi silmek istediğinize emin misiniz?')) return;
-                if (fbDbRef.current) {
-                    fbDbRef.current.ref(`${RZ_TALEPLER_PATH}/${t.key}`).remove().catch(err => console.error('Talep silinemedi:', err));
-                }
-                const yeniAnahtarlar = benimTalepAnahtarlari.filter(k => k !== t.key);
-                setBenimTalepAnahtarlari(yeniAnahtarlar);
-                localStorage.setItem('rz_talep_anahtarlarim', JSON.stringify(yeniAnahtarlar));
-                setGorulenDurumlar(prev => {
-                    if (!(t.key in prev)) return prev;
-                    const next = { ...prev };
-                    delete next[t.key];
-                    try { localStorage.setItem('rz_talep_gorulen', JSON.stringify(next)); } catch (e) {}
-                    return next;
-                });
+                fbDbRef.current.ref(`${RZ_TALEPLER_PATH}/${t.key}`).remove().catch(err => console.error('Talep silinemedi:', err));
             };
 
             useEffect(() => {
@@ -1317,6 +1306,9 @@
                                                 <button onClick={() => reddetTalep(t)} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-semibold" style={{ background: 'var(--brick-tint)', color: 'var(--brick)' }}>
                                                     <Icon name="x" className="w-4 h-4" /> Reddet
                                                 </button>
+                                                <button onClick={() => adminTalebiSil(t)} aria-label="Talebi sil" className="w-11 flex items-center justify-center rounded-lg" style={{ background: 'var(--paper-2)', color: 'var(--ink-soft)' }}>
+                                                    <Icon name="trash" className="w-4 h-4" />
+                                                </button>
                                             </div>
                                         </div>
                                     ))}
@@ -1363,9 +1355,6 @@
                                                     {t.durum === 'onaylandi' ? 'Onaylandı' : t.durum === 'reddedildi' ? 'Reddedildi' : t.durum === 'iptal_edildi' ? 'Yönetici iptal etti' : 'Onay bekliyor'}
                                                 </span>
                                             </div>
-                                            <button onClick={() => benimTalebimiSil(t)} className="mt-2.5 flex items-center gap-1.5 text-xs font-semibold" style={{ color: 'var(--brick)' }}>
-                                                <Icon name="trash" className="w-3.5 h-3.5" /> Sil
-                                            </button>
                                         </div>
                                     ))}
                                 </div>
