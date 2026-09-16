@@ -359,6 +359,21 @@
         const RZ_BOOKINGS_PATH = 'rezervasyon/onayliRezervasyonlar';
         const RZ_TALEPLER_PATH = 'rezervasyon/talepler';
 
+        // Ntfy.sh üzerinden telefona anlık bildirim — yöneticinin telefonunda
+        // "ntfy" uygulaması bu konuya (topic) abone olduğunda, öğretmen bir
+        // talep gönderdiği anda uygulama kapalı olsa bile bildirim düşer.
+        // Sunucu tarafı gerekmez, doğrudan tarayıcıdan istek atılır.
+        const RZ_NTFY_TOPIC = 'rezerv-yunus-isa';
+        function ntfyGonder(baslik, govde) {
+            try {
+                fetch('https://ntfy.sh/' + RZ_NTFY_TOPIC, {
+                    method: 'POST',
+                    body: govde,
+                    headers: { 'Title': baslik, 'Priority': 'default', 'Tags': 'calendar' }
+                }).catch(() => {});
+            } catch (e) {}
+        }
+
         function App() {
             // Yönetici oturumu localStorage'da tutulur — kısayoldan/ana ekrandan her
             // açılışta şifre sorulmaması için "Çıkış yap" ile temizlenene kadar kalıcıdır.
@@ -630,6 +645,7 @@
                         try { localStorage.setItem('rz_talep_gorulen', JSON.stringify(next)); } catch (e) {}
                         return next;
                     });
+                    ntfyGonder('Yeni rezervasyon talebi', `${isim} · ${activeLocation} · ${formatDateStrDisplay(day.dateStr)} · ${lesson.label}`);
                     setTalepGonderiliyor(false);
                     setEditingCell(null);
                 }).catch(err => {
