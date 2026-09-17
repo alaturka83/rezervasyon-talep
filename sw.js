@@ -4,28 +4,36 @@
    Kök dizinde durur ve index.html ile aynı klasörde yaşar;
    böylece kısayoldan açılan sayfa tam kapsama (scope) sahip olur.
 
-   Amaç yalnızca uygulamanın kurulabilmesi ve bağlantı koptuğunda
-   beyaz ekran yerine son açılan sayfanın gelmesidir.
+   Strateji: "önce ağ, olmazsa önbellek". Sunucuya yeni sürüm
+   yüklendiğinde kullanıcı HER ZAMAN yeni sürümü alır; önbellek
+   yalnızca internet yokken devreye girer.
 
-   ÖNEMLİ: Strateji "önce ağ, olmazsa önbellek". Yani sunucuya
-   yeni bir sürüm yüklediğinizde kullanıcı HER ZAMAN yeni sürümü
-   alır; önbellek sadece internet yokken devreye girer.
+   Rezervasyon/talep verileri BURADA ÖNBELLEKLENMEZ; yalnızca
+   uygulama kabuğu (HTML/manifest/simgeler) tutulur.
 
-   Rezervasyon/talep verileri BURADA ÖNBELLEKLENMEZ; bu dosya
-   yalnızca uygulama kabuğunu (HTML/manifest/simgeler) çevrimdışıyken
-   de açılabilir tutar.
+   v5 — ERR_FAILED düzeltmesi (okul-ariza-takip ile aynı):
+   • respondWith() hiçbir durumda "undefined" döndürmüyor.
+   • Sayfa (navigation) istekleri ayrı ele alınıyor; ağ yoksa
+     index.html'e, o da yoksa gerçek bir çevrimdışı sayfasına düşülüyor.
+   • Yönlendirmeli cevaplar önbelleğe alınmıyor.
+   • Kurulumda tek bir dosya inmese bile SW kurulumu çökmüyor.
 ============================================================ */
-const ONBELLEK = 'rezervasyon-talep-kabuk-v4';
+const ONBELLEK = 'rezervasyon-talep-kabuk-v5';
+const INDEX = new URL('./index.html', self.location.href).href;
 const KABUK = [
-  './index.html',
-  './manifest.json',
-  './icon-192.png',
-  './icon-512.png',
-  './icon-maskable.png'
+  INDEX,
+  new URL('./manifest.json', self.location.href).href,
+  new URL('./icon-192.png', self.location.href).href,
+  new URL('./icon-512.png', self.location.href).href,
+  new URL('./icon-maskable.png', self.location.href).href
 ];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(ONBELLEK).then(c => c.addAll(KABUK)).then(() => self.skipWaiting()));
+  e.waitUntil(
+    caches.open(ONBELLEK).then(c =>
+      Promise.all(KABUK.map(u => c.add(u).catch(() => {})))
+    ).then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate', e => {
@@ -36,32 +44,57 @@ self.addEventListener('activate', e => {
   );
 });
 
+function cevrimdisiSayfa() {
+  return new Response(
+    '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<title>Çevrimdışı</title><body style="font-family:sans-serif;padding:24px;text-align:center">' +
+    '<h2>Bağlantı yok</h2><p>Rezervasyon sistemi açılamadı. İnternet bağlantınızı kontrol edip sayfayı yenileyin.</p>' +
+    '<p><a href="./">Yeniden dene</a></p></body>',
+    { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+  );
+}
+
 self.addEventListener('fetch', e => {
   const istek = e.request;
   if (istek.method !== 'GET') return;
   const url = new URL(istek.url);
-  if (url.origin !== self.location.origin) return;   // CDN (React/Tailwind/html2canvas) istekleri hiç karışmadan geçer
+  if (url.origin !== self.location.origin) return;   // CDN (React/Tailwind/html2canvas/Firebase) istekleri karışmadan geçer
 
+  // ---- Sayfa açılışı: ağ → önbellekteki index.html → çevrimdışı sayfası
+  if (istek.mode === 'navigate') {
+    e.respondWith(
+      fetch(istek)
+        .then(cevap => {
+          if (cevap && cevap.ok && !cevap.redirected && cevap.type === 'basic') {
+            const kopya = cevap.clone();
+            caches.open(ONBELLEK).then(c => c.put(INDEX, kopya)).catch(() => {});
+          }
+          return cevap;
+        })
+        .catch(() => caches.match(INDEX).then(c => c || cevrimdisiSayfa()))
+    );
+    return;
+  }
+
+  // ---- Diğer aynı-kaynak istekler (manifest, simgeler vb.)
   e.respondWith(
     fetch(istek)
       .then(cevap => {
-        if (cevap && cevap.ok) {
+        if (cevap && cevap.ok && !cevap.redirected && cevap.type === 'basic') {
           const kopya = cevap.clone();
           caches.open(ONBELLEK).then(c => c.put(istek, kopya)).catch(() => {});
         }
         return cevap;
       })
-      .catch(() => caches.match(istek).then(c => c || caches.match('./index.html')))
+      .catch(() => caches.match(istek).then(c => c || new Response('', { status: 504, statusText: 'Offline' })))
   );
 });
 
 /* ------------------------------------------------------------
    BİLDİRİME DOKUNULDUĞUNDA (yeni talep bildirimi vb.)
-   ------------------------------------------------------------
-   Uygulama zaten açık bir sekmede/pencerede ise ona odaklanır;
-   değilse yeni bir pencere/sekmede açar. Bildirim, index.html
-   içindeki reg.showNotification(...) çağrısıyla oluşturulur —
-   burada yalnızca tıklama davranışı yönetilir.
+   Uygulama açık bir sekmede ise ona odaklanır; değilse yeni
+   pencerede açar. Bildirim index.html'deki reg.showNotification
+   çağrısıyla oluşturulur; burada yalnızca tıklama yönetilir.
 ------------------------------------------------------------ */
 self.addEventListener('notificationclick', e => {
   e.notification.close();
